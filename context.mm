@@ -3,12 +3,7 @@
 //
 //  BBedit Language Module for ConTeXt.
 //
-//
-// Documentation!
-// Documentation!
-// Documentation!
-//
-// TODO: Documentation!
+
 
 #include "context.h"
 
