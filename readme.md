@@ -15,10 +15,6 @@ The language module supports the following features:
  * Folding text within balanced \start and \stop commands.
  * Syntax coloring of text, commands, command parameters, and command options.
 
-This is the source release; for the binary release, please see:
-
-	TBD
-
 # Navigation by Heading Titles
 
 This language module supports navigation of ConTeXt documents by heading titles. When encountering headings in the document, the module will populate the BBEdit function navigation drop-down with the text specified in the title={} keyval (or NOTITLE if missing). Logical depth is indicated by indent.
