@@ -1,6 +1,8 @@
 
 BBEdit Language Module for ConTeXt Authoring
 
+Build for BBEdit v11.
+
 Paul Mazaitis <paul@mazaitis.org>
 
 # Introduction
