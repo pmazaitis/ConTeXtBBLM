@@ -62,10 +62,6 @@
 				</dict>
 				<dict>
 					<key>BBLMLanguageSuffix</key>
-					<string>.mkii</string>
-				</dict>
-				<dict>
-					<key>BBLMLanguageSuffix</key>
 					<string>.mkiv</string>
 				</dict>
 			</array>
@@ -89,11 +85,11 @@
 			<key>BBLMRunColors</key>
 			<dict>
 				<key>org.mazaitis.bblm.command</key>
-				<string>rgb(0,0,0)</string>
+				<string>rgb(0,16,124)</string>
 				<key>org.mazaitis.bblm.parameter</key>
-				<string>rgb(0,0,255)</string>
+				<string>rgb(0,25,191)</string>
 				<key>org.mazaitis.bblm.option</key>
-				<string>rgb(0,0,255)</string>
+				<string>rgb(0,29,229)</string>
 				<key>com.barebones.bblm.keyword</key>
 				<string>rgb(255,0,0)</string>
 				<key>com.barebones.bblm.comment</key>
@@ -107,7 +103,9 @@
 			</array>
 			<key>BBLMNonSpellableRunKinds</key>
 			<array>
-				<string>com.barebones.bblm.keyword</string>
+				<string>org.mazaitis.bblm.command</string>
+				<string>org.mazaitis.bblm.parameter</string>
+				<string>org.mazaitis.bblm.option</string>
 			</array>
 		</dict>
 	</array>
