@@ -99,7 +99,8 @@
 			</dict>
 			<key>BBLMSpellableRunKinds</key>
 			<array>
-				<string>*</string>
+				<string>com.barebones.bblm.comment</string>
+				<string>com.barebones.bblm.code</string>
 			</array>
 			<key>BBLMNonSpellableRunKinds</key>
 			<array>
