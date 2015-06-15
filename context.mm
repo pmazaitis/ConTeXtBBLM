@@ -6,8 +6,11 @@
 
 
 #include "context.h"
+#include "syslog.h"
 
 #pragma mark -
+
+// Roll back to the start of the more recent text run
 
 static void adjustRange(BBLMParamBlock &params, const BBLMCallbackBlock &callbacks)
 {
@@ -45,6 +48,24 @@ static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm
         iter++;
     }
     params.fGuessLanguageParams.fGuessResult = context_guess;
+}
+
+// Is this run spellable?
+
+static void isRunSpellable(BBLMParamBlock &params)
+{
+    NSString * curr_kind = params.fCanSpellCheckRunParams.fRunKind;
+    
+    if ([curr_kind isEqualToString:kBBLMCodeRunKind] || [curr_kind isEqualToString:kBBLMCommentRunKind])
+    {
+        syslog(LOG_WARNING, "### BBLM: Spellable: %s", [curr_kind UTF8String]);
+        params.fCanSpellCheckRunParams.fRunCanBeSpellChecked = true;
+    }
+    else
+    {
+        syslog(LOG_WARNING, "### BBLM: Not Spellable: %s", [curr_kind UTF8String]);
+        params.fCanSpellCheckRunParams.fRunCanBeSpellChecked = false;
+    }
 }
 
 extern "C"
@@ -117,7 +138,13 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
             result = noErr;
             break;
         }
-		case kBBLMSetCategoriesMessage:
+        case kBBLMCanSpellCheckRunMessage:
+        {
+            syslog(LOG_WARNING, "### BBLM: got kBBLMCanSpellCheckRunMessage");
+            isRunSpellable(params);
+            break;
+        }
+        case kBBLMSetCategoriesMessage:
         {
             break;
         }
