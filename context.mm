@@ -6,7 +6,6 @@
 
 
 #include "context.h"
-#include "syslog.h"
 
 #pragma mark -
 
@@ -58,12 +57,10 @@ static void isRunSpellable(BBLMParamBlock &params)
     
     if ([curr_kind isEqualToString:kBBLMCodeRunKind] || [curr_kind isEqualToString:kBBLMCommentRunKind])
     {
-        syslog(LOG_WARNING, "### BBLM: Spellable: %s", [curr_kind UTF8String]);
         params.fCanSpellCheckRunParams.fRunCanBeSpellChecked = true;
     }
     else
     {
-        syslog(LOG_WARNING, "### BBLM: Not Spellable: %s", [curr_kind UTF8String]);
         params.fCanSpellCheckRunParams.fRunCanBeSpellChecked = false;
     }
 }
@@ -140,7 +137,6 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
         }
         case kBBLMCanSpellCheckRunMessage:
         {
-            syslog(LOG_WARNING, "### BBLM: got kBBLMCanSpellCheckRunMessage");
             isRunSpellable(params);
             break;
         }

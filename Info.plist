@@ -23,6 +23,8 @@
 	<key>com.barebones.bblminfo</key>
 	<array>
 		<dict>
+			<key>BBLMFiltersRunsForSpellChecking</key>
+			<true/>
 			<key>BBLMAlwaysGuessLanguage</key>
 			<true/>
 			<key>BBLMKeywords</key>
@@ -97,17 +99,6 @@
 				<key>com.barebones.bblm.code</key>
 				<string>rgb(0,0,0)</string>
 			</dict>
-			<key>BBLMSpellableRunKinds</key>
-			<array>
-				<string>com.barebones.bblm.comment</string>
-				<string>com.barebones.bblm.code</string>
-			</array>
-			<key>BBLMNonSpellableRunKinds</key>
-			<array>
-				<string>org.mazaitis.bblm.command</string>
-				<string>org.mazaitis.bblm.parameter</string>
-				<string>org.mazaitis.bblm.option</string>
-			</array>
 		</dict>
 	</array>
 </dict>
