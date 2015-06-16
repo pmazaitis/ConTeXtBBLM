@@ -25,7 +25,7 @@ This language module lists headings defined by /setuphead in the function naviga
 
 # Navigation by Callouts
 
-This language module supports navigation of ConTeXt documents by heading titles. These callouts are supported:
+This language module supports navigation of ConTeXt documents by callouts in the text. These callouts are supported:
 
  * FIXME:
  * TODO:
