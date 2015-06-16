@@ -257,6 +257,52 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
                 valid_titles.push_back(new_head_definition); // Add our new definition to the list of valid heads
             }
+            if (iter.strcmp("\\bTABLE") == 0)
+            {
+                pending_types.push("bTABLE");
+                pending_folds.push(curr_pos);
+            }
+            if (iter.strcmp("\\eTABLE") == 0)
+            {
+                OSErr err;
+                if ( !pending_folds.empty())
+                {
+                    fold_start = pending_folds.top();
+                    pending_folds.pop();
+                }
+                fold_length = curr_pos - fold_start - 7;
+                if (fold_length > 0)
+                {
+                    err = bblmAddFoldRange(&bblm_callbacks, fold_start, fold_length);
+                    if (err)
+                    {
+                        return err;
+                    }
+                }
+            }
+            if (iter.strcmp("\\bTR") == 0)
+            {
+                pending_types.push("bTR");
+                pending_folds.push(curr_pos);
+            }
+            if (iter.strcmp("\\eTR") == 0)
+            {
+                OSErr err;
+                if ( !pending_folds.empty())
+                {
+                    fold_start = pending_folds.top();
+                    pending_folds.pop();
+                }
+                fold_length = curr_pos - fold_start - 4;
+                if (fold_length > 0)
+                {
+                    err = bblmAddFoldRange(&bblm_callbacks, fold_start, fold_length);
+                    if (err)
+                    {
+                        return err;
+                    }
+                }
+            }
             if (iter.stricmp("\\start") == 0) // Check if we have a start command.
             {
                 UInt32 func_start;
