@@ -259,19 +259,30 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (iter.strcmp("\\bTABLE") == 0)
             {
-                pending_types.push("bTABLE");
+
+                vector<UniChar> curr_function_type;
+
+                while (iter.InBounds() && *iter != '[' && *iter != '\r' && *iter != ' ')
+                {
+                    // Collect Characters until we get to the end of the command
+                    curr_ch = *iter;
+                    curr_function_type.push_back(curr_ch);
+                    skipChars(&iter, &curr_pos, &line_start, 1);
+                }
+                //string func_type(curr_function_type.begin(), curr_function_type.end());
+                //pending_types.push(func_type);
                 pending_folds.push(curr_pos);
             }
             if (iter.strcmp("\\eTABLE") == 0)
             {
-#pragma mark - FIXME: this fold length needs to use the width of the command to work.
                 OSErr err;
                 if ( !pending_folds.empty())
                 {
                     fold_start = pending_folds.top();
                     pending_folds.pop();
                 }
-                fold_length = curr_pos - fold_start - 7;
+                
+                fold_length = curr_pos - fold_start;
                 if (fold_length > 0)
                 {
                     err = bblmAddFoldRange(&bblm_callbacks, fold_start, fold_length);
@@ -283,19 +294,28 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (iter.strcmp("\\bTR") == 0)
             {
-                pending_types.push("bTR");
+                vector<UniChar> curr_function_type;
+                
+                while (iter.InBounds() && *iter != '[' && *iter != '\r' && *iter != ' ')
+                {
+                    // Collect Characters until we get to the end of the command
+                    curr_ch = *iter;
+                    curr_function_type.push_back(curr_ch);
+                    skipChars(&iter, &curr_pos, &line_start, 1);
+                }
+                //string func_type(curr_function_type.begin(), curr_function_type.end());
+                //pending_types.push("bTR");
                 pending_folds.push(curr_pos);
             }
             if (iter.strcmp("\\eTR") == 0)
             {
-#pragma mark - FIXME: this fold length needs to use the width of the command to work.
                 OSErr err;
                 if ( !pending_folds.empty())
                 {
                     fold_start = pending_folds.top();
                     pending_folds.pop();
                 }
-                fold_length = curr_pos - fold_start - 4;
+                fold_length = curr_pos - fold_start;
                 if (fold_length > 0)
                 {
                     err = bblmAddFoldRange(&bblm_callbacks, fold_start, fold_length);
