@@ -264,6 +264,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (iter.strcmp("\\eTABLE") == 0)
             {
+#pragma mark - FIXME: this fold length needs to use the width of the command to work.
                 OSErr err;
                 if ( !pending_folds.empty())
                 {
@@ -287,6 +288,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (iter.strcmp("\\eTR") == 0)
             {
+#pragma mark - FIXME: this fold length needs to use the width of the command to work.
                 OSErr err;
                 if ( !pending_folds.empty())
                 {
