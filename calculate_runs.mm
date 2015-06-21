@@ -8,18 +8,19 @@
 //
 
 #include <stack>
+
 #include "context.h"
 
-#define kBBLMCommandRunKind                 @"org.mazaitis.bblm.command"
+#define kBBLMCommandRunKind         @"org.mazaitis.bblm.command"
 #define	kBBLMParameterRunKind				@"org.mazaitis.bblm.parameter"
 #define	kBBLMOptionRunKind					@"org.mazaitis.bblm.option"
 
-static int skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos, int n)
+static int skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
 {
     for(int i=0; i < n; i++)
     {
         (*iter)++;
-        (*curr_pos)++;
+        (*curr_pos_after)++;
         
         if (!iter->InBounds())
         {
@@ -29,12 +30,28 @@ static int skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos, int n)
     return(0);
 }
 
-static SInt32 addRun(SInt32 &prev_pos, SInt32 curr_pos, const BBLMCallbackBlock &bblm_callbacks, NSString *curr_run_string)
+static bool testSingleCommand(UniChar curr_char)
+{
+    switch (curr_char)
+    {
+        case ',':
+        case ':':
+        case ';':
+        case '%':
+        case '#':
+        case '$':
+        case '&':
+            return true;
+    }
+    return false;
+}
+
+static SInt32 addRun(SInt32 &run_start_pos, SInt32 curr_pos_after, const BBLMCallbackBlock &bblm_callbacks, NSString *curr_run_string)
 {
     bool result;
     
-    if (curr_pos > prev_pos) {
-        result = bblmAddRun(&bblm_callbacks, LANGUAGE_CODE, curr_run_string, prev_pos, curr_pos - prev_pos);
+    if (curr_pos_after > run_start_pos) {
+        result = bblmAddRun(&bblm_callbacks, LANGUAGE_CODE, curr_run_string, run_start_pos, curr_pos_after - run_start_pos);
         if (!result)
         {
             return false;
@@ -53,10 +70,11 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     // * kBBLMCommentRunKind      (used for comments; can be spell checked)
     // * kBBLMCodeRunKind         (used for document text; can be spell checked)
     //
-    // ...in ten states:
+    // ...in eleven states:
     //
-    // * k_command
-    // * k_predicate
+    // * k_backslash            - We have a backslash, but we don't know waht to do with it yet.
+    // * k_command              - Command name
+    // * k_predicate            - Capture any
     // * k_parameter
     // * k_parameter_last
     // * k_parameter_text
@@ -68,32 +86,36 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
 
     
     BBLMTextIterator iter(params);      // Iterator as supplied by calling code
-    UniChar curr_char, prev_char;       //
-    SInt32 curr_pos;                    //
-    SInt32 prev_pos;                    // The beginning of a ?
+    UniChar curr_char;                  //
+    // UniChar prev_char;               //
+    SInt32 curr_pos_after = 0;              //
+    // SInt32 curr_pos_before = 0;				//
+    SInt32 run_start_pos = 0;               //
+    
+    SInt32 backslash_pos = 0;           // Backslash position
     bool no_skip = false;
     
     enum RunKinds
     {
+        k_backslash,
         k_command,
+        k_command_single,
         k_predicate,
         k_parameter,
-        k_parameter_last,
         k_parameter_text,
-        k_parameter_text_last,
+        k_parameter_last,
         k_option,
         k_option_last,
+        k_option_text,
         k_comment,
         k_text
     };
 
     std::stack<RunKinds> pending_runs;
     
-    prev_pos  = params.fCalcRunParams.fStartOffset;
-    curr_pos  = prev_pos;
-    //curr_char = ' ';
-    prev_char = ' ';
-    iter += prev_pos;
+    run_start_pos  = params.fCalcRunParams.fStartOffset;
+    curr_pos_after  = run_start_pos;
+    iter += run_start_pos;
     
     // Let's assume we're starting with text
     pending_runs.push(k_text);
@@ -102,33 +124,60 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     while (iter.InBounds())
     {
         curr_char = *iter;
+        
         no_skip = false;
         
         switch (pending_runs.top())
         {
-            case k_command:
-                curr_run_string = kBBLMCommandRunKind;
-                if (curr_char == '%' && prev_char != '\\')
+            case k_backslash:
+            {
+                if (isalnum(curr_char))
                 {
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
                     pending_runs.pop();
+                    pending_runs.push(k_command);
+                    if (addRun(run_start_pos, backslash_pos, bblm_callbacks, curr_run_string)) {run_start_pos = backslash_pos;} else {return;}
+                }
+                else if (testSingleCommand(curr_char))
+                {
+                    pending_runs.push(k_command_single);
+                }
+                else
+                {
+                    pending_runs.pop();
+                }
+                    
+                break;
+            }
+            case k_command:
+            {
+                curr_run_string = kBBLMCommandRunKind;
+
+                if (curr_char == '%')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                     pending_runs.push(k_comment);
                 }
-                else if (curr_char == '[' || curr_char == '{')
+                else if (isalnum(curr_char))
+                {
+                    break;
+                }
+                else
                 {
                     pending_runs.pop();
                     pending_runs.push(k_predicate);
                     no_skip=true;
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
-                }
-                else if (curr_char == ' ' || curr_char == '~' || iter.stricmp("\r\r") == 0 || curr_char == ']' || curr_char == '}')
-                {
-                    pending_runs.pop();
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
-                    no_skip=true;
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 }
                 break;
+            }
+            case k_command_single:
+            {
+                curr_run_string = kBBLMCommandRunKind;
+                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                pending_runs.pop();
+            }
             case k_predicate:
+            {
                 if (curr_char == '[')
                 {
                     pending_runs.push(k_parameter);
@@ -137,123 +186,142 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 {
                     pending_runs.push(k_option);
                 }
+                else if (isspace(curr_char))
+                {
+                    break;
+                }
                 else
                 {
                     pending_runs.pop();
-                    no_skip=true;
+                    no_skip = true;
                 }
                 break;
+            }
             case k_parameter:
+            {
                 curr_run_string = kBBLMParameterRunKind;
-                if (curr_char == ']')
+                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                pending_runs.pop();
+                pending_runs.push(k_parameter_text);
+                no_skip = true;
+                break;
+            }
+            case k_parameter_text:
+            {
+                curr_run_string = kBBLMCodeRunKind;
+                if (curr_char == '\\')
                 {
+                    backslash_pos = curr_pos_after;
+                    pending_runs.push(k_backslash);
+                }
+                else if (curr_char == '[')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_parameter);
+                }
+                else if (curr_char == ']')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                     pending_runs.pop();
                     pending_runs.push(k_parameter_last);
                 }
                 else if (curr_char == '{')
                 {
-                    pending_runs.push(k_parameter_text);
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
-                }
-                else if (iter.strcmp("\\\\") == 0) {
-                    break;
-                }
-                else if (curr_char == '\\' && prev_char != '\\')
-                {
-                    pending_runs.push(k_command);
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_option);
                 }
                 break;
+            }
             case k_parameter_last:
+            {
                 curr_run_string = kBBLMParameterRunKind;
                 pending_runs.pop();
+                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 no_skip=true;
-                if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
                 break;
-            case k_parameter_text:
-                curr_run_string = kBBLMCodeRunKind;
-                if (curr_char == '}')
-                {
-                    pending_runs.pop();
-                    pending_runs.push(k_parameter_text_last);
-                }
-                else if (curr_char == '\\' && prev_char != '\\')
-                {
-                    pending_runs.push(k_command);
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
-                }
-                break;
-            case k_parameter_text_last:
-                curr_run_string = kBBLMCodeRunKind;
-
-                pending_runs.pop();
-                no_skip=true;
-                if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
-                
-                break;
+            }
             case k_option:
+            {
                 curr_run_string = kBBLMOptionRunKind;
-                if (curr_char == '}')
+                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                pending_runs.pop();
+                pending_runs.push(k_option_text);
+                no_skip = true;
+                break;
+            }
+            case k_option_text:
+            {
+                curr_run_string = kBBLMCodeRunKind;
+                if (curr_char == '\\')
                 {
+                    backslash_pos = curr_pos_after;
+                    pending_runs.push(k_backslash);
+                }
+                else if (curr_char == '{')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_option);
+                }
+                else if (curr_char == '}')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                     pending_runs.pop();
                     pending_runs.push(k_option_last);
-
-                }
-                else if (curr_char == '\\' && prev_char != '\\')
-                {
-                    pending_runs.push(k_command);
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
                 }
                 break;
+            }
             case k_option_last:
+            {
                 curr_run_string = kBBLMOptionRunKind;
                 pending_runs.pop();
-                if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
-                no_skip=true;
+                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                no_skip = true;
                 break;
+            }
             case k_comment:
+            {
                 curr_run_string = kBBLMCommentRunKind;
                 // No need to change runKind if we're in a comment block
                 if (iter.stricmp("\r%") == 0)
                 {
-                    skipRunChars(&iter, &curr_pos, 1);
+                    skipRunChars(&iter, &curr_pos_after, 1);
                 }
                 // end of line with no next comment, so revert to previous run kind
                 else if (curr_char == '\r')
                 {
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                     pending_runs.pop();
                 }
                 break;
+            }
             case k_text:
+            {
                 curr_run_string = kBBLMCodeRunKind;
-                if (curr_char == '%' && prev_char != '\\')
+                if (curr_char == '%')
                 {
                     pending_runs.push(k_comment);
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 }
-                else if (iter.strcmp("\\\\") == 0) {
-                    break;
-                }
-                else if (iter.strcmp("\\%") == 0) {
-                    break;
-                }
-                else if (curr_char == '\\' && prev_char != '\\')
+                if (curr_char == '{')
                 {
-                    pending_runs.push(k_command);
-                    if (addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string)) {prev_pos = curr_pos;} else {return;}
+                    pending_runs.push(k_option);
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 }
-
+                else if (curr_char == '\\')
+                {
+                    backslash_pos = curr_pos_after;
+                    pending_runs.push(k_backslash);
+                }
                 break;
+            }
         } // End Switch
         if (no_skip) {
             continue;
         }
-        prev_char = curr_char;
-        skipRunChars(&iter, &curr_pos, 1);
+        skipRunChars(&iter, &curr_pos_after, 1);
     }
     // Commit final run
-    addRun(prev_pos, curr_pos, bblm_callbacks, curr_run_string);
+    addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string);
     
     // Clean up 
     while (!pending_runs.empty())
