@@ -20,18 +20,6 @@ static int skipChars(BBLMTextIterator* iter, UInt32* curr_pos, UInt32* line_star
     UniChar curr_char;
     for(int i=0; i < n; i++)
     {
-        if (*curr_pos == 0)
-        {
-            *line_start = 0;
-        }
-        else if (curr_char == '\r')
-        {
-            *line_start = (*curr_pos) + 1;
-        }
-        
-        (*iter)++;
-        (*curr_pos)++;
-        
         if (iter->InBounds())
         {
             curr_char = **iter;
@@ -40,6 +28,19 @@ static int skipChars(BBLMTextIterator* iter, UInt32* curr_pos, UInt32* line_star
         {
             return(1);
         }
+        
+        if (*curr_pos == 0)
+        {
+            *line_start = 0;
+        }
+        else if (curr_char == '\r')
+        {
+            *line_start = (*curr_pos) + 1;
+        }
+    
+        (*iter)++;
+        (*curr_pos)++;
+
     }
     return(0);
 }
