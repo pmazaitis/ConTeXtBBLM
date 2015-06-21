@@ -87,11 +87,11 @@
 			<key>BBLMRunColors</key>
 			<dict>
 				<key>org.mazaitis.bblm.command</key>
-				<string>rgb(23,76,127)</string>
+				<string>rgb(0,102,102)</string>
 				<key>org.mazaitis.bblm.parameter</key>
-				<string>rgb(23,127,127)</string>
+				<string>rgb(51,204,102)</string>
 				<key>org.mazaitis.bblm.option</key>
-				<string>rgb(23,176,127"#B50000")</string>
+				<string>rgb(102,0,153)</string>
 				<key>com.barebones.bblm.keyword</key>
 				<string>rgb(181,0,0)</string>
 				<key>com.barebones.bblm.comment</key>
