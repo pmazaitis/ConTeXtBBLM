@@ -20,15 +20,21 @@ static int skipChars(BBLMTextIterator* iter, UInt32* curr_pos, UInt32* line_star
     UniChar curr_char;
     for(int i=0; i < n; i++)
     {
+        if (*curr_pos == 0)
+        {
+            *line_start = 0;
+        }
+        else if (curr_char == '\r')
+        {
+            *line_start = (*curr_pos) + 1;
+        }
+        
         (*iter)++;
         (*curr_pos)++;
         
         if (iter->InBounds())
         {
             curr_char = **iter;
-            
-            if (curr_char == '\r')
-                *line_start = iter->Offset() + 1;
         }
         else
         {
@@ -90,7 +96,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     UInt32 fold_start = 0;          //
     UInt32 fold_length = 0;         // 
     int func_list_depth = 0;        // Keep track of visible funciton depth
-    
+    UInt32 comm_block_pos = 0;      // Start of possible comment block
+    int consec_comment_lines = 0;   // How many consecutive lines of comments to we have?
     
     vector<string> valid_titles = {"part", "chapter", "section", "subsection","subsubsection","title","subject","subsubject","subsubsubject"};
     
@@ -184,6 +191,41 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
         }
         
         // End testing for markers
+        
+        // Test for comment blocks
+        
+        if (line_start == curr_pos && curr_ch == '%')
+        {
+            if (consec_comment_lines == 0)
+            {
+                comm_block_pos = curr_pos;
+            }
+            consec_comment_lines += 1;
+        }
+        else if (line_start == curr_pos)
+        {
+            if (consec_comment_lines > 2)
+            {
+                comm_block_pos += 1;
+                fold_length = curr_pos - comm_block_pos - 1;
+                if (fold_length > 0)
+                {
+                    result = bblmAddFoldRange(&bblm_callbacks, comm_block_pos, fold_length);
+                    if (result)
+                    {
+                        return result;
+                    }
+                }
+            }
+            comm_block_pos = 0;
+            consec_comment_lines = 0;
+        }
+        
+        
+        
+        // End testing for comments
+        
+        // Test for commands
         if (curr_ch == '\\') // Found the start character of a ConTeXt command.
         {
             if (iter.stricmp("\\environment ") == 0) // Populate the includes pop-up with environment files
