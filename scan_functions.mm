@@ -556,5 +556,20 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
         }
     }
+    
+    // Clean up
+    while (!pending_funcs.empty())
+    {
+        pending_funcs.pop();
+    }
+    while (!pending_types.empty())
+    {
+        pending_types.pop();
+    }
+    while (!pending_folds.empty())
+    {
+        pending_folds.pop();
+    }
+    
     return result;
 }
