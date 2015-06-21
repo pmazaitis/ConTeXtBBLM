@@ -101,7 +101,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     
     vector<string> valid_titles = {"part", "chapter", "section", "subsection","subsubsection","title","subject","subsubject","subsubsubject"};
     
-    iter += curr_pos;
+    // iter += curr_pos;
     
     while(iter.InBounds()) // While there are characters left...
     {
@@ -399,7 +399,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 {
                     // Close off preamble fold, end is linestart - 1
                     fold_start = 0;
-                    fold_length = line_start - 12;
+                    fold_length = line_start - 1;
                     if (fold_length > 0)
                     {
                         err = bblmAddFoldRange(&bblm_callbacks, fold_start, fold_length);
