@@ -11,9 +11,9 @@
 
 #include "context.h"
 
-#define kBBLMCommandRunKind         @"org.mazaitis.bblm.command"
-#define	kBBLMParameterRunKind				@"org.mazaitis.bblm.parameter"
-#define	kBBLMOptionRunKind					@"org.mazaitis.bblm.option"
+#define kBBLMCommandRunKind             @"org.mazaitis.bblm.command"
+#define	kBBLMParameterRunKind			@"org.mazaitis.bblm.parameter"
+#define	kBBLMOptionRunKind				@"org.mazaitis.bblm.option"
 
 static int skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
 {
@@ -30,7 +30,7 @@ static int skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
     return(0);
 }
 
-static bool testSingleCommand(UniChar curr_char)
+static bool testSingleCharCommand(UniChar curr_char)
 {
     switch (curr_char)
     {
@@ -66,34 +66,33 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     //
     // * kBBLMCommandRunKind      (ConTeXt commands \... )
     // * kBBLMParameterRunKind    (ConTeXt command parameters [...] )
-    // * kBBLMOptionRunKind       (ConTeXt command options {...} )
+    // * kBBLMOptionRunKind       (ConTeXt optional text {...} )
     // * kBBLMCommentRunKind      (used for comments; can be spell checked)
     // * kBBLMCodeRunKind         (used for document text; can be spell checked)
     //
-    // ...in eleven states:
+    // ...in twelve states:
     //
     // * k_backslash            - We have a backslash, but we don't know waht to do with it yet.
     // * k_command              - Command name
+    // * k_command_single       - Single character, non-alpha commands (supported by a static list)
     // * k_predicate            - Capture any
     // * k_parameter
-    // * k_parameter_last
     // * k_parameter_text
-    // * k_parameter_text_last
+    // * k_parameter_last
     // * k_option
+    // * k_option_text
     // * k_option_last
-    // * k_comment
-    // * k_text
+    // * k_comment              - Comment to the end of the line
+    // * k_text                 - Everything else
 
     
     BBLMTextIterator iter(params);      // Iterator as supplied by calling code
-    UniChar curr_char;                  //
-    // UniChar prev_char;               //
-    SInt32 curr_pos_after = 0;              //
-    // SInt32 curr_pos_before = 0;				//
-    SInt32 run_start_pos = 0;               //
+    UniChar curr_char;                  // Current character
+    SInt32 curr_pos_after = 0;          // Track our position in the file
+    SInt32 run_start_pos = 0;           // Track the beginning ot the previous run
     
     SInt32 backslash_pos = 0;           // Backslash position
-    bool no_skip = false;
+    bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
     
     enum RunKinds
     {
@@ -105,8 +104,8 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
         k_parameter_text,
         k_parameter_last,
         k_option,
-        k_option_last,
         k_option_text,
+        k_option_last,
         k_comment,
         k_text
     };
@@ -137,7 +136,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                     pending_runs.push(k_command);
                     if (addRun(run_start_pos, backslash_pos, bblm_callbacks, curr_run_string)) {run_start_pos = backslash_pos;} else {return;}
                 }
-                else if (testSingleCommand(curr_char))
+                else if (testSingleCharCommand(curr_char))
                 {
                     pending_runs.push(k_command_single);
                 }
@@ -284,6 +283,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 // No need to change runKind if we're in a comment block
                 if (iter.stricmp("\r%") == 0)
                 {
+                    // We want to skip twice in this case
                     skipRunChars(&iter, &curr_pos_after, 1);
                 }
                 // end of line with no next comment, so revert to previous run kind
