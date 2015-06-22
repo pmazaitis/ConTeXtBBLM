@@ -70,14 +70,13 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     // * kBBLMCommentRunKind      (used for comments; can be spell checked)
     // * kBBLMCodeRunKind         (used for document text; can be spell checked)
     //
-    // ...in twelve states:
+    // ...in eleven states:
     //
     // * k_backslash            - We have a backslash, but we don't know waht to do with it yet.
     // * k_command              - Command name
     // * k_command_single       - Single character, non-alpha commands (supported by a static list)
-    // * k_predicate            - Capture any
+    // * k_predicate            - Capture any command arguments and optional text
     // * k_parameter
-    // * k_parameter_text
     // * k_parameter_last
     // * k_option
     // * k_option_text
@@ -101,7 +100,6 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
         k_command_single,
         k_predicate,
         k_parameter,
-        k_parameter_text,
         k_parameter_last,
         k_option,
         k_option_text,
@@ -199,24 +197,15 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
             case k_parameter:
             {
                 curr_run_string = kBBLMParameterRunKind;
-                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
-                pending_runs.pop();
-                pending_runs.push(k_parameter_text);
-                no_skip = true;
-                break;
-            }
-            case k_parameter_text:
-            {
-                curr_run_string = kBBLMCodeRunKind;
                 if (curr_char == '\\')
                 {
                     backslash_pos = curr_pos_after;
                     pending_runs.push(k_backslash);
                 }
-                else if (curr_char == '[')
+                else if (curr_char == '{')
                 {
                     if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
-                    pending_runs.push(k_parameter);
+                    pending_runs.push(k_option);
                 }
                 else if (curr_char == ']')
                 {
@@ -224,11 +213,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                     pending_runs.pop();
                     pending_runs.push(k_parameter_last);
                 }
-                else if (curr_char == '{')
-                {
-                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
-                    pending_runs.push(k_option);
-                }
+
                 break;
             }
             case k_parameter_last:
@@ -236,7 +221,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 curr_run_string = kBBLMParameterRunKind;
                 pending_runs.pop();
                 if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
-                no_skip=true;
+                no_skip = true;
                 break;
             }
             case k_option:
