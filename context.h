@@ -3,9 +3,9 @@
 //
 //  BBedit Language Module for ConTeXt.
 //
-//  Created by Paul Mazaitis on 3/25/15.
+//  Created by Paul Mazaitis.
 //
-//
+//  See https://github.com/pmazaitis/ConTeXtBBLM
 
 #ifndef ConTeXt_context_h
 #define ConTeXt_context_h
@@ -14,7 +14,6 @@
 #include "BBLMTextIterator.h"
 
 #define LANGUAGE_CODE 'cTeX'
-#define kMaxLineLength	256
 
 OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks);
 
