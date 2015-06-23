@@ -1,8 +1,11 @@
 //
-//
+//  context.mm
 //
 //  BBedit Language Module for ConTeXt.
 //
+//  Created by Paul Mazaitis.
+//
+//  See https://github.com/pmazaitis/ConTeXtBBLM
 
 
 #include "context.h"
@@ -29,8 +32,7 @@ static void adjustRange(BBLMParamBlock &params, const BBLMCallbackBlock &callbac
     }
 }
 
-
-// Try to guess if this is a context file
+// Try to guess if this is a ConTeXt file; look for a \starttext command.
 
 static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks)
 {
@@ -49,7 +51,12 @@ static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm
     params.fGuessLanguageParams.fGuessResult = context_guess;
 }
 
-// Is this run spellable?
+// Is the current run spellable?
+//
+// We only consider set text and commments to be spellable, in the following run kinds:
+//
+// * kBBLMCodeRunKind
+// * kBBLMCommentRunKind
 
 static void isRunSpellable(BBLMParamBlock &params)
 {
