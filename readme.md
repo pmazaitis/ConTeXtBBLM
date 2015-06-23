@@ -1,7 +1,7 @@
 
 BBEdit Language Module for ConTeXt Authoring
 
-Intended for BBEdit v11.
+Intended for BBEdit v11, for use with ConTeXt MkIV.
 
 Created by Paul Mazaitis <paul@mazaitis.org>
 
@@ -49,6 +49,7 @@ This language module supports the following folds:
  * Folds from balanced pairs of /start and /stop commands
  * A fold from the beginning of the document to /starttext, if applicable
  * A fold from /stoptext to the end of the document, if applicable
+ * Folds for comment blocks of three or more lines
 
 # Coloring Syntax
 
@@ -56,8 +57,8 @@ This language module identifies and colors five types of text:
 
  * Plain text
  * Commands
- * Command Parameters (square brackets)
- * Command Options (curly brackets)
+ * Command Parameters (square brackets and contents)
+ * Command Options (curly brackets only)
  * Comments
 
 Colors can be customized in the Text Colors preference pane under the group name **ConTeXt**.
@@ -75,4 +76,4 @@ and are copyright Bare Bones Software, Inc.
 
 # Thanks
 
-...go to Kathryn, Patrick, and Andrew.
+...go to Kathryn, Patrick, Andrew, and Thomas.
