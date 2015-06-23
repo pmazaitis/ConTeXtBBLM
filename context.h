@@ -19,5 +19,4 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
 
 void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks);
 
-
 #endif
