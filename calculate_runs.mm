@@ -16,7 +16,7 @@
 #define	kBBLMParameterRunKind			@"org.mazaitis.bblm.parameter"
 #define	kBBLMOptionRunKind				@"org.mazaitis.bblm.option"
 
-static int skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
+static bool skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
 {
     for(int i=0; i < n; i++)
     {
@@ -25,10 +25,10 @@ static int skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
         
         if (!iter->InBounds())
         {
-            return(1);
+            return(true);
         }
     }
-    return(0);
+    return(false);
 }
 
 static bool testSingleCharCommand(UniChar curr_char)
@@ -44,6 +44,7 @@ static bool testSingleCharCommand(UniChar curr_char)
         case '$':
         case '&':
             return true;
+            break;
     }
     return false;
 }
@@ -181,7 +182,12 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
             }
             case k_predicate:
             {
-                if (curr_char == '[')
+                if (curr_char == '%')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_comment);
+                }
+                else if (curr_char == '[')
                 {
                     pending_runs.push(k_parameter);
                 }
@@ -203,7 +209,12 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
             case k_parameter:
             {
                 curr_run_string = kBBLMParameterRunKind;
-                if (curr_char == '\\')
+                if (curr_char == '%')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_comment);
+                }
+                else if (curr_char == '\\')
                 {
                     backslash_pos = curr_pos_after;
                     pending_runs.push(k_backslash);
@@ -279,13 +290,17 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 if (iter.stricmp("\r%") == 0)
                 {
                     // We want to skip twice in this case
-                    skipRunChars(&iter, &curr_pos_after, 1);
+                    if (skipRunChars(&iter, &curr_pos_after, 1)) return;
                 }
                 // end of line with no next comment, so revert to previous run kind
                 else if (curr_char == '\r')
                 {
                     if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                     pending_runs.pop();
+                    if (pending_runs.top() == k_predicate)
+                    {
+                        no_skip = true;
+                    }
                 }
                 
                 break;
@@ -315,7 +330,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
         if (no_skip) {
             continue;
         }
-        skipRunChars(&iter, &curr_pos_after, 1);
+        if (skipRunChars(&iter, &curr_pos_after, 1)) return;
     }
     // Commit final run
     addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string);
