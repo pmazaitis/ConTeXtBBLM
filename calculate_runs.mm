@@ -3,9 +3,10 @@
 //
 //  BBedit Language Module for ConTeXt.
 //
-//  Created by Paul Mazaitis on 4/26/15.
+//  Created by Paul Mazaitis.
 //
-//
+//  See https://github.com/pmazaitis/ConTeXtBBLM
+
 
 #include <stack>
 
@@ -34,6 +35,7 @@ static bool testSingleCharCommand(UniChar curr_char)
 {
     switch (curr_char)
     {
+        case ' ':
         case ',':
         case ':':
         case ';':
@@ -76,11 +78,11 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     // * k_command              - Command name
     // * k_command_single       - Single character, non-alpha commands (supported by a static list)
     // * k_predicate            - Capture any command arguments and optional text
-    // * k_parameter
-    // * k_parameter_last
-    // * k_option
-    // * k_option_text
-    // * k_option_last
+    // * k_parameter            - Command parameters
+    // * k_parameter_last       - Capture last character of command parameters
+    // * k_option               - Opening curly bracket
+    // * k_option_text          - Delimited text
+    // * k_option_last          - Closing curly bracket
     // * k_comment              - Comment to the end of the line
     // * k_text                 - Everything else
 
@@ -136,7 +138,9 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 }
                 else if (testSingleCharCommand(curr_char))
                 {
+                    pending_runs.pop();
                     pending_runs.push(k_command_single);
+                    if (addRun(run_start_pos, backslash_pos, bblm_callbacks, curr_run_string)) {run_start_pos = backslash_pos;} else {return;}
                 }
                 else
                 {
@@ -172,6 +176,8 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 curr_run_string = kBBLMCommandRunKind;
                 if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 pending_runs.pop();
+                
+                break;
             }
             case k_predicate:
             {
@@ -222,6 +228,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 pending_runs.pop();
                 if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 no_skip = true;
+                
                 break;
             }
             case k_option:
@@ -231,6 +238,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 pending_runs.pop();
                 pending_runs.push(k_option_text);
                 no_skip = true;
+                
                 break;
             }
             case k_option_text:
@@ -252,6 +260,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                     pending_runs.pop();
                     pending_runs.push(k_option_last);
                 }
+                
                 break;
             }
             case k_option_last:
@@ -260,6 +269,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 pending_runs.pop();
                 if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 no_skip = true;
+                
                 break;
             }
             case k_comment:
@@ -277,6 +287,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                     if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                     pending_runs.pop();
                 }
+                
                 break;
             }
             case k_text:
@@ -297,6 +308,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                     backslash_pos = curr_pos_after;
                     pending_runs.push(k_backslash);
                 }
+                
                 break;
             }
         } // End Switch
