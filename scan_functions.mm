@@ -3,9 +3,10 @@
 //
 //  BBedit Language Module for ConTeXt.
 //
-//  Created by Paul Mazaitis on 4/26/15.
+//  Created by Paul Mazaitis.
 //
-//
+//  See https://github.com/pmazaitis/ConTeXtBBLM
+
 
 #include <string>
 #include <stack>
@@ -60,6 +61,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     // * Folds from balanced pairs of /start and /stop commands
     // * A fold from the beginning of the document to /starttext, if applicable
     // * A fold from /stoptext to the end of the document, if applicable
+    // * Folds for comment blocks of three or more lines
     //
     // ## Populating the Functions Menu
     //
@@ -102,7 +104,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     
     vector<string> valid_titles = {"part", "chapter", "section", "subsection","subsubsection","title","subject","subsubject","subsubsubject"};
     
-    // iter += curr_pos;
+    iter += curr_pos;
     
     while(iter.InBounds()) // While there are characters left...
     {
