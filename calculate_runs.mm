@@ -43,6 +43,8 @@ static bool testSingleCharCommand(UniChar curr_char)
         case '#':
         case '$':
         case '&':
+        case '{':
+        case '}':
             return true;
             break;
     }
@@ -67,20 +69,23 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
 {
     // We are concerned with five kinds of run:
     //
-    // * kBBLMCommandRunKind      (ConTeXt commands \... )
-    // * kBBLMParameterRunKind    (ConTeXt command parameters [...] )
-    // * kBBLMOptionRunKind       (ConTeXt optional text {...} )
-    // * kBBLMCommentRunKind      (used for comments; can be spell checked)
-    // * kBBLMCodeRunKind         (used for document text; can be spell checked)
+    // * kBBLMCommandRunKind    - ConTeXt commands \...
+    // * kBBLMParameterRunKind  - ConTeXt command parameters [...]
+    // * kBBLMOptionRunKind     - ConTeXt optional text {...}
+    // * kBBLMCommentRunKind    - used for comments; can be spell checked
+    // * kBBLMCodeRunKind       - used for document text; can be spell checked
     //
-    // ...in eleven states:
+    // ...in fourteen states:
     //
-    // * k_backslash            - We have a backslash, but we don't know waht to do with it yet.
+    // * k_backslash            - We have a backslash, but we don't know what to do with it yet.
     // * k_command              - Command name
     // * k_command_single       - Single character, non-alpha commands (supported by a static list)
     // * k_predicate            - Capture any command arguments and optional text
     // * k_parameter            - Command parameters
     // * k_parameter_last       - Capture last character of command parameters
+    // * k_paramtext            - Opening curly bracket in a parameter
+    // * k_paramtext_text       - Delimited text: runkind determined by visibility
+    // * k_paramtext_last       - Closing curly bracket in a parameter
     // * k_option               - Opening curly bracket
     // * k_option_text          - Delimited text
     // * k_option_last          - Closing curly bracket
@@ -95,6 +100,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     
     SInt32 backslash_pos = 0;           // Backslash position
     bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
+    bool visible_param_text = false;    // Flag to track if we want to treat parameter value as visible text
     
     enum RunKinds
     {
@@ -104,6 +110,9 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
         k_predicate,
         k_parameter,
         k_parameter_last,
+        k_paramtext,
+        k_paramtext_text,
+        k_paramtext_last,
         k_option,
         k_option_text,
         k_option_last,
@@ -177,7 +186,10 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 curr_run_string = kBBLMCommandRunKind;
                 if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                 pending_runs.pop();
-                
+                if (curr_char == '\\')
+                {
+                    no_skip = true;
+                }
                 break;
             }
             case k_predicate:
@@ -209,6 +221,15 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
             case k_parameter:
             {
                 curr_run_string = kBBLMParameterRunKind;
+                // For any of the following keys, we want the value to be syntax colored as plain text.
+                if ((iter.stricmp("title") == 0) ||
+                    (iter.stricmp("bookmark") == 0) ||
+                    (iter.stricmp("author") == 0) ||
+                    (iter.stricmp("keyword") == 0) ||
+                    (iter.stricmp("subtitle") == 0))
+                {
+                    visible_param_text = true;
+                }
                 if (curr_char == '%')
                 {
                     if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
@@ -221,8 +242,12 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 }
                 else if (curr_char == '{')
                 {
-                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
-                    pending_runs.push(k_option);
+                    if (visible_param_text)
+                    {
+                        if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                        pending_runs.push(k_paramtext);
+                        visible_param_text = false;
+                    }
                 }
                 else if (curr_char == ']')
                 {
@@ -242,6 +267,53 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 
                 break;
             }
+            case k_paramtext:
+            {
+                curr_run_string = kBBLMParameterRunKind;
+                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                pending_runs.pop();
+                pending_runs.push(k_paramtext_text);
+                no_skip = true;
+                
+                break;
+            }
+            case k_paramtext_text:
+            {
+                curr_run_string = kBBLMCodeRunKind;
+                if (curr_char == '%')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_comment);
+                }
+                else if (curr_char == '\\')
+                {
+                    backslash_pos = curr_pos_after;
+                    pending_runs.push(k_backslash);
+                }
+                else if (curr_char == '{')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_paramtext);
+                }
+                else if (curr_char == '}')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.pop();
+                    pending_runs.push(k_paramtext_last);
+                }
+                
+                break;
+            }
+            case k_paramtext_last:
+            {
+                curr_run_string = kBBLMParameterRunKind;
+                pending_runs.pop();
+                if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                no_skip = true;
+                
+                break;
+            }
+
             case k_option:
             {
                 curr_run_string = kBBLMOptionRunKind;
@@ -255,7 +327,12 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
             case k_option_text:
             {
                 curr_run_string = kBBLMCodeRunKind;
-                if (curr_char == '\\')
+                if (curr_char == '%')
+                {
+                    if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
+                    pending_runs.push(k_comment);
+                }
+                else if (curr_char == '\\')
                 {
                     backslash_pos = curr_pos_after;
                     pending_runs.push(k_backslash);
