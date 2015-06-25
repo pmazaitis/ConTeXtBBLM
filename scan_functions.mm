@@ -102,7 +102,15 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     UInt32 comm_block_pos = 0;      // Start of possible comment block
     int consec_comment_lines = 0;   // How many consecutive lines of comments to we have?
     
-    vector<string> valid_titles = {"part", "chapter", "section", "subsection","subsubsection","title","subject","subsubject","subsubsubject"};
+    vector<string> valid_titles = { "part",
+                                    "chapter",
+                                    "section",
+                                    "subsection",
+                                    "subsubsection",
+                                    "title",
+                                    "subject",
+                                    "subsubject",
+                                    "subsubsubject"};
     
     iter += curr_pos;
     
