@@ -23,6 +23,13 @@
 	<key>com.barebones.bblminfo</key>
 	<array>
 		<dict>
+			<key>BBLMSupportsTextCompletion</key>
+			<false/>
+			<key>BBLMNonCompletableRunKinds</key>
+			<array>
+				<string>com.barebones.bblm.code</string>
+				<string>com.barebones.bblm.comment</string>
+			</array>
 			<key>BBLMFiltersRunsForSpellChecking</key>
 			<true/>
 			<key>BBLMAlwaysGuessLanguage</key>
