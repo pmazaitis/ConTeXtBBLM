@@ -226,7 +226,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
         
         
         
-        // End testing for comments
+        // End testing for comment blocks
         
         // Test for commands
         if (curr_ch == '\\') // Found the start character of a ConTeXt command.
@@ -307,7 +307,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
 
                 vector<UniChar> curr_function_type;
 
-                while (iter.InBounds() && *iter != '[' && *iter != '\r' && *iter != ' ')
+                while (iter.InBounds() && isalnum(*iter))
                 {
                     // Collect Characters until we get to the end of the command
                     curr_ch = *iter;
@@ -384,7 +384,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 func_start = curr_pos;
                 skipChars(&iter, &curr_pos, &line_start, 6);
                 
-                while (iter.InBounds() && *iter != '[' && *iter != '\r' && *iter != ' ')
+                while (iter.InBounds() && isalnum(*iter))
                 {
                     // Collect Characters until we get to the end of the command
                     curr_ch = *iter;
@@ -398,7 +398,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 bool is_known_type = (find(valid_titles.begin(), valid_titles.end(), func_type) != valid_titles.end());
                 
-                if (func_type == "text")
+                if (func_type == "text" && func_type.length() == 4 )
                 {
                     // Close off preamble fold, end is linestart - 1
                     fold_start = 0;
@@ -447,7 +447,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                                 skipChars(&iter, &curr_pos, &line_start, 1);
                             }
                             func_name_stop = curr_pos;
-                            func_stop = curr_pos; // DEBUG
+                            func_stop = curr_pos;
                         }
                         skipChars(&iter, &curr_pos, &line_start, 1);
                     }
@@ -525,14 +525,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     fold_start = pending_folds.top();
                     pending_folds.pop();
                 }
-            
-                if (iter.stricmp("text") == 0)
-                {
-                    // Begin postamble fold
-                    pending_folds.push(curr_pos + 5);
-                }
-                
-                while (iter.InBounds() && *iter && *iter != ' ' && *iter != '\r')
+
+                while (iter.InBounds() && isalnum(*iter))
                 {
                     // Collect Characters until we get to the end of the command
                     curr_ch = *iter;
@@ -542,6 +536,11 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 string func_type(curr_function_type.begin(), curr_function_type.end());
                 
+                if (func_type == "text" && func_type.length() == 4 )
+                {
+                    // Begin postamble fold
+                    pending_folds.push(curr_pos);
+                }
                 
                 fold_length = curr_pos - fold_start - 5 - func_type.length();
                 if (fold_length > 0)
