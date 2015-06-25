@@ -406,7 +406,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 bool is_known_type = (find(valid_titles.begin(), valid_titles.end(), func_type) != valid_titles.end());
                 
-                if (func_type == "text" && func_type.length() == 4 )
+                if (func_type == "text")
                 {
                     // Close off preamble fold, end is linestart - 1
                     fold_start = 0;
@@ -544,7 +544,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 string func_type(curr_function_type.begin(), curr_function_type.end());
                 
-                if (func_type == "text" && func_type.length() == 4 )
+                if (func_type == "text")
                 {
                     // Begin postamble fold
                     pending_folds.push(curr_pos);
