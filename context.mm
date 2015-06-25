@@ -156,7 +156,25 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
 			result = userCanceledErr;
 			break;
 		}
-			
+        case kBBLMAdjustRangeForTextCompletion:
+        {
+            break;
+        }
+        case kBBLMFilterRunForTextCompletion:
+        {
+            break;
+        }
+        case kBBLMCreateTextCompletionArray:
+        {
+            break;
+        }
+        case kBBLMSetCategoriesForTextCompletionMessage:
+        {
+            SInt8*  cat = params.fCategoryParams.fCategoryTable;
+            
+            cat[(int)'\\'] = '<';
+            break;
+        }
 		default:
 		{
 			result = paramErr;
