@@ -101,6 +101,14 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     int func_list_depth = 0;        // Keep track of visible funciton depth
     UInt32 comm_block_pos = 0;      // Start of possible comment block
     int consec_comment_lines = 0;   // How many consecutive lines of comments to we have?
+
+    struct func_point_info
+    {
+        UniChar ch = ' ';                   // The current character we're processing
+        UInt32 pos = 0;                     // The current position in the file; we start at the first character
+        UInt32 line_start = 0;              // Position of the start of the current line
+        bool in_comment = false;            // Track if we are in a comment to suppress folds
+    };
     
     vector<string> valid_titles = { "part",
                                     "chapter",

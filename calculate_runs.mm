@@ -102,6 +102,16 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
     bool visible_param_text = false;    // Flag to track if we want to treat parameter value as visible text
     
+    struct runs_point_info
+    {
+        UniChar ch;                         // Current character
+        SInt32 pos = 0;                     // Track our position in the file
+        SInt32 run_start = 0;               // Track the beginning ot the previous run
+        UInt32 backslash = 0;               // Location of backslash to indicate command run start
+        bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
+        bool visible_param_text = false;    // Track if current paramter value should be painted as plain text or parameter text
+    };
+    
     enum RunKinds
     {
         k_backslash,
