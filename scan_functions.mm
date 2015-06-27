@@ -13,8 +13,60 @@
 #include <vector>
 
 #include "context.h"
+#include "syslog.h"
 
 using namespace std;
+
+struct func_point_info
+{
+    UniChar ch = ' ';                   // The current character we're processing
+    UInt32 pos = 0;                     // The current position in the file; we start at the first character
+    UInt32 line_start = 0;              // Position of the start of the current line
+    bool in_comment = false;            // Track if we are in a comment to suppress folds
+};
+
+bool in_comment = false;
+
+//static bool skipChars(BBLMTextIterator* iter, func_point_info* p, int n)
+//{
+//    for(int i=0; i < n; i++)
+//    {
+//        if (iter->InBounds())
+//        {
+//            p->ch = **iter;
+//        }
+//        else
+//        {
+//            return(1);
+//        }
+//        
+//        // Do we have a new line?
+//        if (p->pos == 0)
+//        {
+//            p->line_start = 0;
+//        }
+//        else if (p->ch == '\r')
+//        {
+//            p->line_start = (p->pos) + 1;
+//        }
+//        
+//        // Are we in a comment block?
+//        if (p->ch == '%' && iter->GetPrevChar() != '\\')
+//        {
+//            p->in_comment = true;
+//        }
+//        else if (p->in_comment && p->ch == '\r')
+//        {
+//            
+//        }
+//        
+//        (*iter)++;
+//        (p->pos)++;
+//        
+//    }
+//    return(0);
+//}
+
 
 static int skipChars(BBLMTextIterator* iter, UInt32* curr_pos, UInt32* line_start, int n)
 {
@@ -38,7 +90,17 @@ static int skipChars(BBLMTextIterator* iter, UInt32* curr_pos, UInt32* line_star
         {
             *line_start = (*curr_pos) + 1;
         }
-    
+        // Are we in a comment block?
+        if (curr_char == '%' && iter->GetPrevChar() != '\\')
+        {
+            in_comment = true;
+            iter->GetNextChar();
+        }
+        else if (in_comment && curr_char == '\r')
+        {
+            in_comment = false;
+        }
+        
         (*iter)++;
         (*curr_pos)++;
 
@@ -89,26 +151,27 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     // * Will only find user-specified heads that are set up before use.
     
     BBLMTextIterator iter(params);  // Iterator as supplied by calling code
+    OSErr  result = noErr;          // Return check
+
     UniChar curr_ch = ' ';          // The current character we're processing
     UInt32 curr_pos = 0;            // The current position in the file; we start at the first character
     UInt32 line_start = 0;          // Position of the start of the current line
-    OSErr  result = noErr;          // Return check
+    
+    // State stacks
     stack<UInt32> pending_funcs;    // Keep track of pending functions
     stack<string> pending_types;    // Keep track of pending function types
     stack<UInt32> pending_folds;    // Keep track of pending fold starts
-    UInt32 fold_start = 0;          //
-    UInt32 fold_length = 0;         // 
+
+    // Funcion Depth (we can't use the stack depth for this)
     int func_list_depth = 0;        // Keep track of visible funciton depth
+    
+    // Folds
+    UInt32 fold_start = 0;          //
+    UInt32 fold_length = 0;         //
     UInt32 comm_block_pos = 0;      // Start of possible comment block
     int consec_comment_lines = 0;   // How many consecutive lines of comments to we have?
-
-    struct func_point_info
-    {
-        UniChar ch = ' ';                   // The current character we're processing
-        UInt32 pos = 0;                     // The current position in the file; we start at the first character
-        UInt32 line_start = 0;              // Position of the start of the current line
-        bool in_comment = false;            // Track if we are in a comment to suppress folds
-    };
+    
+    func_point_info point;
     
     vector<string> valid_titles = { "part",
                                     "chapter",
@@ -318,7 +381,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
                 valid_titles.push_back(new_head_definition); // Add our new definition to the list of valid heads
             }
-            if (iter.strcmp("\\bTABLE") == 0)
+            if (iter.strcmp("\\bTABLE") == 0 && !in_comment)
             {
 
                 vector<UniChar> curr_function_type;
@@ -334,7 +397,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 //pending_types.push(func_type);
                 pending_folds.push(curr_pos);
             }
-            if (iter.strcmp("\\eTABLE") == 0)
+            if (iter.strcmp("\\eTABLE") == 0 && !in_comment)
             {
                 OSErr err;
                 if ( !pending_folds.empty())
@@ -353,7 +416,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     }
                 }
             }
-            if (iter.strcmp("\\bTR") == 0)
+            if (iter.strcmp("\\bTR") == 0 && !in_comment)
             {
                 vector<UniChar> curr_function_type;
                 
@@ -368,7 +431,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 //pending_types.push("bTR");
                 pending_folds.push(curr_pos);
             }
-            if (iter.strcmp("\\eTR") == 0)
+            if (iter.strcmp("\\eTR") == 0 && !in_comment)
             {
                 OSErr err;
                 if ( !pending_folds.empty())
@@ -410,11 +473,11 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 string func_type(curr_function_type.begin(), curr_function_type.end());
                 pending_types.push(func_type);
-                pending_folds.push(curr_pos);
+                if (!in_comment) pending_folds.push(curr_pos);
                 
                 bool is_known_type = (find(valid_titles.begin(), valid_titles.end(), func_type) != valid_titles.end());
                 
-                if (func_type == "text")
+                if (func_type == "text" && !in_comment)
                 {
                     // Close off preamble fold, end is linestart - 1
                     fold_start = 0;
@@ -469,13 +532,16 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     }
                     
                     // We have a better value for the start of the fold, so use it instead
-                    pending_folds.pop();
-                    if (option_block_found) {
-                        pending_folds.push(curr_pos + 1);
-                    }
-                    else
+                    if (!in_comment)
                     {
-                        pending_folds.push(curr_pos);
+                        pending_folds.pop();
+                        if (option_block_found) {
+                            pending_folds.push(curr_pos + 1);
+                        }
+                        else
+                        {
+                            pending_folds.push(curr_pos);
+                        }
                     }
                     
                    
@@ -536,7 +602,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 string curr_func_type;
                 
                 skipChars(&iter, &curr_pos, &line_start, 5);
-                if ( !pending_folds.empty())
+                if ( !pending_folds.empty() && !in_comment)
                 {
                     fold_start = pending_folds.top();
                     pending_folds.pop();
@@ -559,7 +625,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
                 
                 fold_length = curr_pos - fold_start - 5 - func_type.length();
-                if (fold_length > 0)
+                if (fold_length > 0 && !in_comment)
                 {
                     err = bblmAddFoldRange(&bblm_callbacks, fold_start, fold_length);
                     if (err)
@@ -600,6 +666,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             
         } // End of test for start of command
         skipChars(&iter, &curr_pos, &line_start, 1);
+        if (in_comment) {syslog(LOG_WARNING, "### BBEdit in comment.");} else {syslog(LOG_WARNING, "### BBEdit not in comment.");}
     } // End of Main While Loop
     
     if (!pending_folds.empty())
