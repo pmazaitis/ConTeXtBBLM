@@ -99,9 +99,21 @@ static bool skipWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
         }
         
         // Do we have a new line?
-        if (p->ch == '\r')
+        if (p->prev == '\r')
         {
-            p->line_start = (p->pos) + 1;
+            p->prev_start = p->line_start;
+            p->line_start = (p->pos);
+            p->line_number += 1;
+        }
+
+        // Are we in a comment?
+        if (p->ch == '%' && p->prev != '\\')
+        {
+            p->in_comment = true;
+        }
+        if (p->in_comment && p->ch == '\r')
+        {
+            p->in_comment = false;
         }
     }
     return(false);
@@ -125,13 +137,63 @@ static bool skipToWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
         }
         
         // Do we have a new line?
-        if (p->ch == '\r')
+        if (p->prev == '\r')
         {
-            p->line_start = (p->pos) + 1;
+            p->prev_start = p->line_start;
+            p->line_start = (p->pos);
+            p->line_number += 1;
+        }
+        
+        // Are we in a comment?
+        if (p->ch == '%' && p->prev != '\\')
+        {
+            p->in_comment = true;
+        }
+        if (p->in_comment && p->ch == '\r')
+        {
+            p->in_comment = false;
         }
     }
     return(false);
 }
+
+//static bool skipToChar(BBLMTextIterator* iter, func_point_info* p, UniChar curr_ch)
+//{
+//    while (p->ch != curr_ch)
+//    {
+//        p->prev = p->ch;
+//        (*iter)++;
+//        (p->pos)++;
+//        
+//        if (iter->InBounds())
+//        {
+//            p->ch = **iter;
+//        }
+//        else
+//        {
+//            return(true);
+//        }
+//        
+//        // Do we have a new line?
+//        if (p->prev == '\r')
+//        {
+//            p->prev_start = p->line_start;
+//            p->line_start = (p->pos);
+//            p->line_number += 1;
+//        }
+//        
+//        // Are we in a comment?
+//        if (p->ch == '%' && p->prev != '\\')
+//        {
+//            p->in_comment = true;
+//        }
+//        if (p->in_comment && p->ch == '\r')
+//        {
+//            p->in_comment = false;
+//        }
+//    }
+//    return(false);
+//}
 
 //static bool getCommandName(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_id)
 //{
@@ -205,7 +267,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     
     BBLMTextIterator iter(params);  // Iterator as supplied by calling code
     OSErr  result = noErr;          // Return check
-
+    bool beyond_eof;                // Flag for getting out of nested parsers
+    
     func_point_info point;
     point.ch = ' ';                 // The current character we're processing
     point.prev = ' ';               // The previous character
@@ -220,8 +283,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     //stack<UInt32> pending_folds;    // Keep track of pending fold starts
     stack<fold_info> pend_folds;    // Keep track of pending folds
 
-    // Function Depth (we can't use the stack depth for this)
-    //int func_list_depth = 0;        // Keep track of visible funciton depth
+    int func_list_depth = 0;        // Keep track of visible funciton depth
     
     // General placeholder for fold_length calculations
     UInt32 fold_length = 0;    //
@@ -344,6 +406,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
         {
             if (point.line_start == point.pos && point.ch == '%')
             {
+                // Set the fold to start after the first line
                 if (consec_comment_lines == 1)
                 {
                     comm_block_pos = point.line_start;
@@ -498,24 +561,46 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (iter.stricmp("\\start") == 0) // Check if we have a start command.
             {
-                vector<UniChar> curr_id;
-                vector<UniChar> curr_function_name;
-                fold_info curr_fold;
+                // We want to populate the info block as we go:
+                //
+                // info.fFunctionStart = point.line_start;
+                // info.fFunctionEnd = func_stop;
+                // info.fSelStart = func_name_start; // title key
+                // info.fSelEnd = func_name_stop; //title key
+                // info.fFirstChar = func_start;
+                // info.fKind = kBBLMFunctionMark;
+                // info.fIndentLevel = func_list_depth;
+                // info.fFlags = 0;
+                // info.fNameStart = offset;
+                // info.fNameLength = func_name_length;
+                
+                
+                BBLMProcInfo info;
                 OSErr err;
-                int TYPE_SKIP = 6;          // Number of characters to skip to get to command type
-                bool show_fold = true;      // Stop from folding if in comment
-                string cmd_type;            // Keep track of current command type (text after \start or \stop)
+                
+                vector<UniChar> curr_id;
+                vector<UniChar> curr_title;
+                fold_info curr_fold;
+                int TYPE_SKIP = 6;              // Number of characters to skip to get to command type
+                bool show_fold = true;          // Stop from folding if in comment
+                string cmd_type;                // Keep track of current command type (text after \start or \stop)
                 
                 // Track initial state
                 if (point.in_comment) {show_fold = false;}
-                curr_fold.start = point.line_start;
                 if (getCommandType(&iter, &point, &curr_id, TYPE_SKIP)) break;
                 cmd_type.assign(curr_id.begin(), curr_id.end());
+                bool is_known_type = (find(valid_titles.begin(), valid_titles.end(), cmd_type) != valid_titles.end());
+
+                // Set up info stanza as far as we can
+                info.fFunctionStart = point.line_start;
+                info.fFunctionEnd = point.line_start += 1; // We fix this in the /stop section
+                info.fFirstChar = point.line_start;
+                info.fKind = kBBLMFunctionMark;
+                info.fFlags = 0;
                 
                 // Handle Folds
                 curr_fold.name = cmd_type;
-                curr_fold.start += curr_fold.name.length() + TYPE_SKIP;
-                if (show_fold) {pend_folds.push(curr_fold);}
+                curr_fold.start = point.pos;
                 
                 if (cmd_type == "text" && point.line_number > 4)
                 {
@@ -533,30 +618,100 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     
                 }
                 
-                
-                
-                
-                // If the command is a known type, process
-                
-                
-                // Skip white space to predicate ('[') or end of command (!'[')
-                
-                
-                
-                // Look for a title key, then WS, then an  '=', then WS, then '{' (break on ']')
-                
-                
-                
-                
-                //
-                
-                
+                if (is_known_type)
+                {
+                    // Argh; state machine to handle parsing this?
+                    
+                    beyond_eof = false;
+                    if (skipWhiteSpace(&iter, &point)) break;
+                    if (point.ch == '[')
+                    {
+                        // We have an option block
+                        // Scan forward until close of option block
+                        // TODO: find a more graceful way to handle open parameter blocks in this context!
+                        while (point.ch != ']' && point.ch != '\r')
+                        {
+                            // Look for a title key
+                            if (iter.strcmp("title") == 0)
+                            {
+                                // scan forward to {
+                                while (point.prev != '{' && point.ch != '\r')
+                                {
+                                    if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
+                                }
+                                info.fSelStart = point.pos;
+                                while(*iter != '}' && *iter != ']' && *iter != '\r') // People do not want multi-line titles
+                                {
+                                    curr_title.push_back(point.ch);
+                                    if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
+                                }
+                                info.fSelEnd = point.pos;
+                                while (point.prev != ']' && point.ch != '\r')
+                                {
+                                    if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
+                                }
+                                // We have a better place to start the fold
+                                curr_fold.start = point.pos;
+                                
+                                if (beyond_eof) {break;}
+                            }
+                            if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
+                        } //End of option block scan
+                        
 
+                    } // End of option block check
+                    
+                    // We didn't find a title, so set an appropriate placeholder.
+                    if (curr_title.empty())
+                    {
+                        string dummy_header_text = "NO TITLE";
+                        copy(dummy_header_text.begin(), dummy_header_text.end(), back_inserter(curr_title));
+                        info.fSelStart = point.line_start - 1;
+                        info.fSelEnd = point.pos + 1;
+                    }
+                    
+                    // We have a title, now: we should have everything we need
+                    // Prepare for the token
+                    UInt32 func_title_length;
+                    UInt32 offset = 0;
+                    func_title_length = curr_title.size();
+                    UniChar *ident = &curr_title[0];
+                    // Set up the token
+                    err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_title_length, &offset);
+                    if (err)
+                    {
+                        return err;
+                    }
+                    
+                    // Set up any remaining bits of the stanza
+                    info.fIndentLevel = func_list_depth;
+                    info.fNameStart = offset;
+                    info.fNameLength = func_title_length;
+                    
+                    // Add function
+                    UInt32 func_index = 0;
+                    err = bblmAddFunctionToList(&bblm_callbacks, params.fFcnParams.fFcnList,info, &func_index);
+                    if (err)
+                    {
+                        return err;
+                    }
+                    pend_funcs.push(func_index);
+                    func_list_depth += 1;
+                    
+                    // Catch EOF errors and send them on
+                    if (beyond_eof) {break;}
+                
+                } // end if is_known_type
+                
+                // Set fold with any updated values
+                if (show_fold) {pend_folds.push(curr_fold);}
             }
             if (iter.stricmp("\\stop") == 0) // Check if we have a stop command.
             {
+                BBLMProcInfo info;
                 OSErr err;                  // Return check
                 vector<UniChar> curr_id;    // Text of current command
+                UInt32 curr_func_idx;       // Index of current function
                 fold_info curr_fold;        // Fold from the top of the fold stack
                 int TYPE_SKIP = 5;          // Number of characters to skip to get to command type
                 string cmd_type;            // temp string of current command
@@ -566,7 +721,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 if (point.in_comment) {show_fold = false;}
                 if (getCommandType(&iter, &point, &curr_id, TYPE_SKIP)) break;
                 cmd_type.assign(curr_id.begin(), curr_id.end());
-            
+                bool is_known_type = (find(valid_titles.begin(), valid_titles.end(), cmd_type) != valid_titles.end());
+                
                 // Handle Folds
                 if (show_fold && !pend_folds.empty())
                 {
@@ -586,6 +742,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     }
                 } // End fold handling
                 
+                // handle /stoptext fold
                 if (cmd_type == "text")
                 {
                     // Begin postamble fold
@@ -593,9 +750,30 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     end_fold.start = point.pos +1;
                     end_fold.name = "ENDFOLD";
                     pend_folds.push(end_fold);
+                } // end /stoptext fold
+                
+                if (is_known_type && !pend_funcs.empty())
+                {
+                    curr_func_idx = pend_funcs.top();
+                    pend_funcs.pop();
+                    func_list_depth--;
+                    
+                    err = bblmGetFunctionEntry(&bblm_callbacks,params.fFcnParams.fFcnList, curr_func_idx, info);
+                    if (err)
+                    {
+                        return err;
+                    }
+                    while (isalnum(*iter))
+                    {
+                        if (skipChars(&iter, &point, 1)) break;
+                    }
+                    info.fFunctionEnd = point.pos;
+                    err = bblmUpdateFunctionEntry(&bblm_callbacks,params.fFcnParams.fFcnList, curr_func_idx, info);
+                    if (err)
+                    {
+                        return err;
+                    }
                 }
-                
-                
                 
                 
             }
@@ -625,10 +803,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     {
         pend_funcs.pop();
     }
-//    while (!pending_types.empty())
-//    {
-//        pending_types.pop();
-//    }
     while (!pend_folds.empty())
     {
         pend_folds.pop();
