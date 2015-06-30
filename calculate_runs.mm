@@ -16,17 +16,6 @@
 #define	kBBLMParameterRunKind			@"org.mazaitis.bblm.parameter"
 #define	kBBLMOptionRunKind				@"org.mazaitis.bblm.option"
 
-//struct runs_point_info
-//{
-//    UniChar ch;                         // Current character
-//    SInt32 pos = 0;                     // Track our position in the file
-//    SInt32 run_start = 0;               // Track the beginning ot the previous run
-//    UInt32 backslash = 0;               // Location of backslash to indicate command run start
-//    NSString* run_kind = @"";           // Current runkind
-//    bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
-//    bool visible_param_text = false;    // Track if current paramter value should be painted as plain text or parameter text
-//} point;
-
 static bool skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
 {
     for(int i=0; i < n; i++)
@@ -41,12 +30,6 @@ static bool skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
     }
     return(false);
 }
-
-//static bool skipRunChars(BBLMTextIterator* iter, runs_point_info* p, int n)
-//{
-//    return true;
-//}
-
 
 static bool testSingleCharCommand(UniChar curr_char)
 {
@@ -246,7 +229,6 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                     (iter.stricmp("subtitle") == 0))
                 {
                     visible_param_text = true;
-                    //point.visible_param_text = true;
                 }
                 if (curr_char == '%')
                 {
