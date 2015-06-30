@@ -594,7 +594,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                                 }
                                 info.fSelStart = point.pos;
-                                while(*iter != '}' && *iter != ']' && *iter != '\r') // People do not want multi-line titles
+                                while(*iter != '}' && *iter != ']' && *iter != '\r')
                                 {
                                     curr_title.push_back(point.ch);
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
