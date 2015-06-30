@@ -157,54 +157,6 @@ static bool skipToWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
     return(false);
 }
 
-//static bool skipToChar(BBLMTextIterator* iter, func_point_info* p, UniChar curr_ch)
-//{
-//    while (p->ch != curr_ch)
-//    {
-//        p->prev = p->ch;
-//        (*iter)++;
-//        (p->pos)++;
-//        
-//        if (iter->InBounds())
-//        {
-//            p->ch = **iter;
-//        }
-//        else
-//        {
-//            return(true);
-//        }
-//        
-//        // Do we have a new line?
-//        if (p->prev == '\r')
-//        {
-//            p->prev_start = p->line_start;
-//            p->line_start = (p->pos);
-//            p->line_number += 1;
-//        }
-//        
-//        // Are we in a comment?
-//        if (p->ch == '%' && p->prev != '\\')
-//        {
-//            p->in_comment = true;
-//        }
-//        if (p->in_comment && p->ch == '\r')
-//        {
-//            p->in_comment = false;
-//        }
-//    }
-//    return(false);
-//}
-
-//static bool getCommandName(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_id)
-//{
-//    // Collect Characters until we get to the end of the command
-//    while ((**iter) == '\\' || isalnum(**iter))
-//    {
-//        c_id->push_back(p->ch);
-//        if (skipChars(iter, p, 1)) return true;
-//    }
-//    return(false);
-//}
 
 static bool getCommandType(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_id, int skip)
 {
@@ -563,16 +515,16 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             {
                 // We want to populate the info block as we go:
                 //
-                // info.fFunctionStart = point.line_start;
-                // info.fFunctionEnd = func_stop;
-                // info.fSelStart = func_name_start; // title key
-                // info.fSelEnd = func_name_stop; //title key
-                // info.fFirstChar = func_start;
-                // info.fKind = kBBLMFunctionMark;
-                // info.fIndentLevel = func_list_depth;
-                // info.fFlags = 0;
-                // info.fNameStart = offset;
-                // info.fNameLength = func_name_length;
+                // info.fFunctionStart  = point.line_start;
+                // info.fFunctionEnd    = func_stop;
+                // info.fSelStart       = func_name_start; // title key
+                // info.fSelEnd         = func_name_stop; //title key
+                // info.fFirstChar      = func_start;
+                // info.fKind           = kBBLMFunctionMark;
+                // info.fIndentLevel    = func_list_depth;
+                // info.fFlags          = 0;
+                // info.fNameStart      = offset;
+                // info.fNameLength     = func_name_length;
                 
                 
                 BBLMProcInfo info;
