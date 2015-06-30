@@ -556,11 +556,11 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 curr_fold.name = cmd_type;
                 curr_fold.start = point.pos;
                 
-                if (cmd_type == "text" && point.line_number > 4)
+                if (cmd_type == "text" && point.line_number > 4 && show_fold)
                 {
                     // Close off preamble fold, end is linestart - 1
                     int fold_start = 0;
-                    fold_length = point.prev_start - 1;
+                    fold_length = point.line_start - 2;
                     if (fold_length > 0)
                     {
                         err = bblmAddFoldRange(&bblm_callbacks, fold_start, fold_length);
