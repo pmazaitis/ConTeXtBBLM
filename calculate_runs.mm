@@ -16,16 +16,16 @@
 #define	kBBLMParameterRunKind			@"org.mazaitis.bblm.parameter"
 #define	kBBLMOptionRunKind				@"org.mazaitis.bblm.option"
 
-struct runs_point_info
-{
-    UniChar ch;                         // Current character
-    SInt32 pos = 0;                     // Track our position in the file
-    SInt32 run_start = 0;               // Track the beginning ot the previous run
-    UInt32 backslash = 0;               // Location of backslash to indicate command run start
-    NSString* run_kind = @"";           // Current runkind
-    bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
-    bool visible_param_text = false;    // Track if current paramter value should be painted as plain text or parameter text
-} point;
+//struct runs_point_info
+//{
+//    UniChar ch;                         // Current character
+//    SInt32 pos = 0;                     // Track our position in the file
+//    SInt32 run_start = 0;               // Track the beginning ot the previous run
+//    UInt32 backslash = 0;               // Location of backslash to indicate command run start
+//    NSString* run_kind = @"";           // Current runkind
+//    bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
+//    bool visible_param_text = false;    // Track if current paramter value should be painted as plain text or parameter text
+//} point;
 
 static bool skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
 {
@@ -117,7 +117,7 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
     
     SInt32 backslash_pos = 0;           // Backslash position
     bool no_skip = false;               // Flag to track if we want to reprocess the current character in a different state
-    //bool visible_param_text = false;    // Flag to track if we want to treat parameter value as visible text
+    bool visible_param_text = false;    // Flag to track if we want to treat parameter value as visible text
     
     enum RunKinds
     {
@@ -245,8 +245,8 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                     (iter.stricmp("keyword") == 0) ||
                     (iter.stricmp("subtitle") == 0))
                 {
-                    //visible_param_text = true;
-                    point.visible_param_text = true;
+                    visible_param_text = true;
+                    //point.visible_param_text = true;
                 }
                 if (curr_char == '%')
                 {
@@ -260,11 +260,11 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
                 }
                 else if (curr_char == '{')
                 {
-                    if (point.visible_param_text)
+                    if (visible_param_text)
                     {
                         if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                         pending_runs.push(k_paramtext);
-                        point.visible_param_text = false;
+                        visible_param_text = false;
                     }
                 }
                 else if (curr_char == ']')
