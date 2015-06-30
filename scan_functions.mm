@@ -216,6 +216,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     //   structure four levels deeper than _part_ for the functions list.
     // * Only supports mkiv style sectioning
     // * Will only find user-specified heads that are set up before use.
+    // * The title= key *must* be on the same line as the head command for the
+    //   section to appear in the nav menu
     
     BBLMTextIterator iter(params);  // Iterator as supplied by calling code
     OSErr  result = noErr;          // Return check
