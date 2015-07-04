@@ -7,7 +7,6 @@
 //
 //  See https://github.com/pmazaitis/ConTeXtBBLM
 
-
 #include <stack>
 
 #include "context.h"
