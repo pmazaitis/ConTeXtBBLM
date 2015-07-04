@@ -7,15 +7,11 @@
 //
 //  See https://github.com/pmazaitis/ConTeXtBBLM
 
-
-// TODO: puzzle out comment block folding behavior
-
 #include <string>
 #include <stack>
 #include <vector>
 
 #include "context.h"
-#include "syslog.h"
 
 using namespace std;
 
