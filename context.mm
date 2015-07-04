@@ -9,6 +9,10 @@
 
 
 #include "context.h"
+#include <string>
+
+//#include <CoreFoundation/CoreFoundation.h>
+//#include <Foundation/Foundation.h>
 
 #pragma mark -
 
@@ -71,6 +75,95 @@ static void isRunSpellable(BBLMParamBlock &params)
         params.fCanSpellCheckRunParams.fRunCanBeSpellChecked = false;
     }
 }
+
+// Completion
+
+static void createTextCompletionArray(bblmCreateCompletionArrayParams &io_params)
+{
+    
+}
+
+// See if there's a new SDK with the new URL-style interface?
+
+static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
+{
+    NSError *err;
+    NSFileManager* fileManager = [NSFileManager defaultManager];
+    
+    // Extensions we want to look for
+    NSArray *valid_extensions = @[@"tex", @"mkiv", @"mkvi"];
+    //NSMutableArray *search_paths;
+    
+    //bool success;
+    
+    // fInDocumentURL	CFURLRef	@"file:///Users/goob/Proj/BBEditExtensions/NewExamples/ContextTesting/test_doc2.mkiv"	0x06e09f20
+    // fInIncludeFileString	CFStringRef	@"test_env"	0x06ecc380
+    //
+
+    //
+    //NSURL *requested_file = [NSURL fileURLWithPath: (NSString *)io_params.fInDocumentURL];
+    //NSString *urlString = (NSString *)io_params.fInDocumentURL;
+
+    
+    // Get URL and filename
+    NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
+    NSLog(@"### Asking File: %@", requestor);
+    NSString *file_name = (__bridge NSString *)io_params.fInIncludeFileString;
+    NSLog(@"### Got request: %@", file_name);
+    
+    NSString *base_url_string = [[requestor absoluteString] stringByDeletingLastPathComponent];
+    
+    NSURL *base_url = [NSURL URLWithString: base_url_string];
+    
+    //NSURL *candidate = [NSURL URLWithString:file_name relativeToURL:base_url];
+    NSURL *candidate_name = [base_url URLByAppendingPathComponent:file_name];
+    
+    
+    // Test if file exists as is
+    if ([candidate_name checkResourceIsReachableAndReturnError:&err] == YES)
+    {
+        NSLog(@"### Found: %@", candidate_name);
+        return;
+    }
+    else
+    {
+        NSLog(@"### Not found: %@", candidate_name);
+    }
+
+    NSURL *candidate;
+    
+    for (id extension in valid_extensions)
+    {
+        //...do something useful with myArrayElement
+        candidate = [candidate_name URLByAppendingPathExtension:extension];
+        if ([candidate checkResourceIsReachableAndReturnError:&err] == YES)
+        {
+            NSLog(@"### Found: %@", candidate);
+            return;
+        }
+        else
+        {
+            NSLog(@"### Not found: %@", candidate);
+        }
+    }
+    
+ 
+    
+    // We couldn't find the file, so create the file in the same dir as the source file
+    NSURL *creation_URL = [candidate URLByAppendingPathExtension:@"tex"];
+    NSLog(@"### Could not find file. Creating file: %@", creation_URL);
+    NSString* create_file = [creation_URL path];
+    [[NSFileManager defaultManager] createFileAtPath:create_file contents:nil attributes:nil];
+
+    
+    // Send the new file name to be displayed in the menu?
+    
+    if ([fileManager fileExistsAtPath: create_file]) {
+        io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: create_file] retain];
+    }
+    
+}
+
 
 extern "C"
 {
@@ -166,16 +259,25 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
         }
         case kBBLMCreateTextCompletionArray:
         {
+            createTextCompletionArray(params.fCreateCompletionArrayParams);
+            result = noErr;
             break;
         }
         case kBBLMSetCategoriesForTextCompletionMessage:
         {
             SInt8*  cat = params.fCategoryParams.fCategoryTable;
             
-            cat[(int)'\\'] = '<';
+            cat[92] = 'a'; //(int)'\\'
             break;
         }
-		default:
+        case kBBLMResolveIncludeFileMessage:
+        {
+            NSLog(@"### BBLM - createResolveIncludeFile");
+            createResolveIncludeFile(params.fResolveIncludeParams);
+            result = noErr;
+            break;
+        }
+        default:
 		{
 			result = paramErr;
 			break;
