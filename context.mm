@@ -89,79 +89,91 @@ static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
 {
     NSError *err;
     NSFileManager* fileManager = [NSFileManager defaultManager];
+    bool not_found = true;
     
     // Extensions we want to look for
     NSArray *valid_extensions = @[@"tex", @"mkiv", @"mkvi"];
-    //NSMutableArray *search_paths;
-    
-    //bool success;
-    
-    // fInDocumentURL	CFURLRef	@"file:///Users/goob/Proj/BBEditExtensions/NewExamples/ContextTesting/test_doc2.mkiv"	0x06e09f20
-    // fInIncludeFileString	CFStringRef	@"test_env"	0x06ecc380
-    //
 
-    //
-    //NSURL *requested_file = [NSURL fileURLWithPath: (NSString *)io_params.fInDocumentURL];
-    //NSString *urlString = (NSString *)io_params.fInDocumentURL;
-
-    
     // Get URL and filename
     NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
     NSLog(@"### Asking File: %@", requestor);
-    NSString *file_name = (__bridge NSString *)io_params.fInIncludeFileString;
-    NSLog(@"### Got request: %@", file_name);
+    NSString *doc_name = (__bridge NSString *)io_params.fInIncludeFileString;
+    NSLog(@"### Got request: %@", doc_name);
     
-    NSString *base_url_string = [[requestor absoluteString] stringByDeletingLastPathComponent];
+    NSString *doc_dir_string = [[requestor absoluteString] stringByDeletingLastPathComponent];
     
-    NSURL *base_url = [NSURL URLWithString: base_url_string];
+    NSURL *doc_dir = [NSURL URLWithString: doc_dir_string];
+    // The explicit argument to the \environment command - may be valid
+    NSURL *candidate_name = [doc_dir URLByAppendingPathComponent:doc_name];
     
-    //NSURL *candidate = [NSURL URLWithString:file_name relativeToURL:base_url];
-    NSURL *candidate_name = [base_url URLByAppendingPathComponent:file_name];
+    // Directories we want to search
+    NSMutableArray *search_paths = [[NSMutableArray alloc] init];
+    NSString *curr_dir = doc_dir_string;
     
-    
-    // Test if file exists as is
-    if ([candidate_name checkResourceIsReachableAndReturnError:&err] == YES)
+    while ( [curr_dir isNotEqualTo:@"file:/"] && [curr_dir isNotEqualTo:@"file:/Users"])
     {
-        NSLog(@"### Found: %@", candidate_name);
-        return;
+        [search_paths addObject: curr_dir];
+        curr_dir = [curr_dir stringByDeletingLastPathComponent];
+        NSLog(@"### Testing directory %@",curr_dir);
     }
-    else
-    {
-        NSLog(@"### Not found: %@", candidate_name);
-    }
-
-    NSURL *candidate;
     
-    for (id extension in valid_extensions)
+    // In each directory...
+    
+    for (id curr_path in search_paths)
     {
-        //...do something useful with myArrayElement
-        candidate = [candidate_name URLByAppendingPathExtension:extension];
-        if ([candidate checkResourceIsReachableAndReturnError:&err] == YES)
+        NSURL *curr_url = [NSURL URLWithString:curr_path];
+        candidate_name = [curr_url URLByAppendingPathComponent:doc_name];
+        
+        // Test if file exists as is
+        if ([candidate_name checkResourceIsReachableAndReturnError:&err] == YES)
         {
-            NSLog(@"### Found: %@", candidate);
+            NSLog(@"### Found: %@", candidate_name);
+            NSString* found_file = [candidate_name path];
+            io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: found_file] retain];
             return;
         }
         else
         {
-            NSLog(@"### Not found: %@", candidate);
+            NSLog(@"### Not found: %@", candidate_name);
+        }
+        
+        NSURL *candidate;
+        
+        for (id extension in valid_extensions)
+        {
+            candidate = [candidate_name URLByAppendingPathExtension:extension];
+            
+            if ([candidate checkResourceIsReachableAndReturnError:&err] == NO)
+            {
+                NSLog(@"### Not found: %@", candidate);
+            }
+            else
+            {
+                NSLog(@"### Found: %@", candidate);
+                NSString* found_file = [candidate path];
+                io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: found_file] retain];
+                return;
+            }
         }
     }
     
- 
-    
-    // We couldn't find the file, so create the file in the same dir as the source file
-    NSURL *creation_URL = [candidate URLByAppendingPathExtension:@"tex"];
-    NSLog(@"### Could not find file. Creating file: %@", creation_URL);
-    NSString* create_file = [creation_URL path];
-    [[NSFileManager defaultManager] createFileAtPath:create_file contents:nil attributes:nil];
+    // TODO: sanity check this, don't clobber files
+    if (not_found)
+    {
+        candidate_name = [doc_dir URLByAppendingPathComponent:doc_name];
+        // We couldn't find the file, so create the file in the same dir as the source file
+        NSURL *creation_URL = [candidate_name URLByAppendingPathExtension:@"tex"];
+        NSLog(@"### Could not find file. Creating file: %@", creation_URL);
+        NSString* create_file = [creation_URL path];
+        [fileManager createFileAtPath:create_file contents:nil attributes:nil];
 
-    
-    // Send the new file name to be displayed in the menu?
-    
-    if ([fileManager fileExistsAtPath: create_file]) {
-        io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: create_file] retain];
+        
+        // Send the new file name to be displayed in the menu?
+        
+        if ([fileManager fileExistsAtPath: create_file]) {
+            io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: create_file] retain];
+        }
     }
-    
 }
 
 
@@ -272,7 +284,6 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
         }
         case kBBLMResolveIncludeFileMessage:
         {
-            NSLog(@"### BBLM - createResolveIncludeFile");
             createResolveIncludeFile(params.fResolveIncludeParams);
             result = noErr;
             break;
