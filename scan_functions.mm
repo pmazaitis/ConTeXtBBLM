@@ -13,6 +13,8 @@
 
 #include "context.h"
 
+#define MAX_PARAM_SIZE 256
+
 using namespace std;
 
 struct func_point_info
@@ -570,34 +572,41 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 if (is_known_type)
                 {
-                    // Argh; state machine to handle parsing this?
+                    
                     
                     beyond_eof = false;
                     if (skipWhiteSpace(&iter, &point)) break;
                     if (point.ch == '[')
                     {
+                        int param_char_count = 0;
                         // We have an option block
                         // Scan forward until close of option block
                         // TODO: find a more graceful way to handle open parameter blocks in this context!
-                        while (point.ch != ']' && point.ch != '\r')
+                        while (point.ch != ']' && point.ch != '\\' && param_char_count < MAX_PARAM_SIZE)
                         {
+                            // Increase the count so we can guess if we have a mal-formed command parameter block
+                            param_char_count += 1;
                             // Look for a title key
                             if (iter.strcmp("title") == 0)
                             {
                                 // scan forward to {
-                                while (point.prev != '{' && point.ch != '\r')
+                                while (point.prev != '{' && param_char_count < MAX_PARAM_SIZE)
                                 {
+                                    param_char_count += 1;
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                                 }
                                 info.fSelStart = point.pos;
-                                while(*iter != '}' && *iter != ']' && *iter != '\r')
+                                // Get the title text (we do not expect the title text to include line breaks)
+                                while(*iter != '}' && *iter != ']' && *iter != '\r' && param_char_count < MAX_PARAM_SIZE)
                                 {
+                                    param_char_count += 1;
                                     curr_title.push_back(point.ch);
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                                 }
                                 info.fSelEnd = point.pos;
-                                while (point.prev != ']' && point.ch != '\r')
+                                while (point.prev != ']' && param_char_count < MAX_PARAM_SIZE)
                                 {
+                                    param_char_count += 1;
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                                 }
                                 // We have a better place to start the fold
