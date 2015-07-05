@@ -42,7 +42,9 @@ Callouts must include a space after the colon to be recognized by the language m
 
 This language module looks for files referenced by \environment commands, and adds them to the navigational drop-down for include files in BBEdit.
 
-At the moment, the language module isn't terribly clever about this: it doesn't do any checking to see if the referenced file has a reasonable name, extension, etc. If the referenced file is valid, the file can be loaded into the editor via the include menu. BBEdit does not support searching for files by multiple extensions, so accessing files this way will only work if the complete and correct file name is used with the \environment command.
+At the moment, the language module searches upward through the directory structure for the referenced environment file with no extension, or the extensions *.tex*, *.mkiv*, or *.mkvi*. If the file is found, the file is loaded.
+
+If no file matching these criteria is found, the file is created and loaded.
 
 # Folding Text
 

@@ -23,6 +23,8 @@
 	<key>com.barebones.bblminfo</key>
 	<array>
 		<dict>
+			<key>BBLMCanResolveIncludeFiles</key>
+			<true/>
 			<key>BBLMSupportsTextCompletion</key>
 			<false/>
 			<key>BBLMNonCompletableRunKinds</key>

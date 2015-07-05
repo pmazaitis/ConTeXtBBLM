@@ -85,20 +85,20 @@ static void createTextCompletionArray(bblmCreateCompletionArrayParams &io_params
 
 // See if there's a new SDK with the new URL-style interface?
 
-static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
+static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
 {
     NSError *err;
     NSFileManager* fileManager = [NSFileManager defaultManager];
     bool not_found = true;
     
     // Extensions we want to look for
-    NSArray *valid_extensions = @[@"tex", @"mkiv", @"mkvi"];
+    NSArray *valid_extensions = @[@"tex",
+                                  @"mkiv",
+                                  @"mkvi"];
 
     // Get URL and filename
     NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
-    NSLog(@"### Asking File: %@", requestor);
     NSString *doc_name = (__bridge NSString *)io_params.fInIncludeFileString;
-    NSLog(@"### Got request: %@", doc_name);
     
     NSString *doc_dir_string = [[requestor absoluteString] stringByDeletingLastPathComponent];
     
@@ -107,6 +107,12 @@ static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
     NSURL *candidate_name = [doc_dir URLByAppendingPathComponent:doc_name];
     
     // Directories we want to search
+    //
+    // At the moment, this does upward path searching to /Users
+    // Other places we could see this from:
+    // * texmf tree
+    // * user environment variables
+    //
     NSMutableArray *search_paths = [[NSMutableArray alloc] init];
     NSString *curr_dir = doc_dir_string;
     
@@ -114,11 +120,9 @@ static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
     {
         [search_paths addObject: curr_dir];
         curr_dir = [curr_dir stringByDeletingLastPathComponent];
-        NSLog(@"### Testing directory %@",curr_dir);
     }
     
     // In each directory...
-    
     for (id curr_path in search_paths)
     {
         NSURL *curr_url = [NSURL URLWithString:curr_path];
@@ -127,14 +131,9 @@ static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
         // Test if file exists as is
         if ([candidate_name checkResourceIsReachableAndReturnError:&err] == YES)
         {
-            NSLog(@"### Found: %@", candidate_name);
             NSString* found_file = [candidate_name path];
             io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: found_file] retain];
             return;
-        }
-        else
-        {
-            NSLog(@"### Not found: %@", candidate_name);
         }
         
         NSURL *candidate;
@@ -143,13 +142,8 @@ static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
         {
             candidate = [candidate_name URLByAppendingPathExtension:extension];
             
-            if ([candidate checkResourceIsReachableAndReturnError:&err] == NO)
+            if ([candidate checkResourceIsReachableAndReturnError:&err] == YES)
             {
-                NSLog(@"### Not found: %@", candidate);
-            }
-            else
-            {
-                NSLog(@"### Found: %@", candidate);
                 NSString* found_file = [candidate path];
                 io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: found_file] retain];
                 return;
@@ -157,17 +151,15 @@ static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
         }
     }
     
-    // TODO: sanity check this, don't clobber files
+    // TODO: sanity check this: don't clobber files
     if (not_found)
     {
         candidate_name = [doc_dir URLByAppendingPathComponent:doc_name];
         // We couldn't find the file, so create the file in the same dir as the source file
         NSURL *creation_URL = [candidate_name URLByAppendingPathExtension:@"tex"];
-        NSLog(@"### Could not find file. Creating file: %@", creation_URL);
         NSString* create_file = [creation_URL path];
         [fileManager createFileAtPath:create_file contents:nil attributes:nil];
 
-        
         // Send the new file name to be displayed in the menu?
         
         if ([fileManager fileExistsAtPath: create_file]) {
@@ -175,7 +167,6 @@ static void createResolveIncludeFile(bblmResolveIncludeParams& io_params)
         }
     }
 }
-
 
 extern "C"
 {
@@ -284,7 +275,7 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
         }
         case kBBLMResolveIncludeFileMessage:
         {
-            createResolveIncludeFile(params.fResolveIncludeParams);
+            resolveIncludeFile(params.fResolveIncludeParams);
             result = noErr;
             break;
         }
