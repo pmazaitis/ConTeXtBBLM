@@ -21,8 +21,6 @@ The language module supports the following features:
 
 This language module supports navigation of ConTeXt documents by heading titles. When encountering headings in the document, the module will populate the BBEdit function navigation menu with the text specified in the title={} keyval (or a placeholder if missing). Logical depth of the head is indicated by indent in the menu.
 
-A limitation of this language module is that it will only report title={} values in the function navigation menu if the title={} parameter is on the same line as the command.
-
 This language module lists headings defined by /setuphead in the function navigation menu.
 
 # Navigation by Callouts
