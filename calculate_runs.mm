@@ -11,9 +11,7 @@
 
 #include "context.h"
 
-#define kBBLMCommandRunKind             @"org.mazaitis.bblm.command"
-#define	kBBLMParameterRunKind			@"org.mazaitis.bblm.parameter"
-#define	kBBLMOptionRunKind				@"org.mazaitis.bblm.option"
+
 
 static bool skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
 {
