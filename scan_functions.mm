@@ -155,6 +155,23 @@ static bool skipToWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
     return(false);
 }
 
+// skipChars - skip over a set number of chars, keeping track of state
+static bool rollBack(BBLMTextIterator* iter, func_point_info* p)
+{
+    (*iter)--;
+    (p->pos)--;
+    
+    if (iter->InBounds())
+    {
+        p->ch = **iter;
+    }
+    else
+    {
+        return(true);
+    }
+    return(false);
+}
+
 
 static bool getCommandType(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_id, int skip)
 {
@@ -172,6 +189,35 @@ static bool getCommandType(BBLMTextIterator* iter, func_point_info* p, vector<Un
     return(false);
 }
 
+static bool inParamBlock(BBLMTextIterator* iter, func_point_info* p, int param_char_count)
+{
+    // If we hit the character limit, return true.
+    if (param_char_count > MAX_PARAM_SIZE)
+    {
+        return false;
+    }
+    
+    // If we encounter anything that might need to be processed:
+    // * a command start ('\')
+    // * callout
+    // ...return true.
+    if (p->ch == '\\')
+    {
+        return false;
+    }
+    if (iter->strcmp("FIXME: ") == 0 ||
+        iter->strcmp("TODO: ") == 0 ||
+        iter->strcmp("REVIEW: ") == 0 ||
+        iter->strcmp("???: ") == 0 ||
+        iter->strcmp("!!!: ") == 0 ||
+        iter->strcmp("NOTE: ") == 0 )
+    {
+        return false;
+    }
+
+    // No conditions found, funciton block not over
+    return true;
+}
 
 OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks)
 {
@@ -229,8 +275,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     
     // State stacks
     stack<UInt32> pend_funcs;    // Keep track of pending functions
-    //stack<string> pending_types;    // Keep track of pending function types
-    //stack<UInt32> pending_folds;    // Keep track of pending fold starts
     stack<fold_info> pend_folds;    // Keep track of pending folds
 
     int func_list_depth = 0;        // Keep track of visible funciton depth
@@ -329,6 +373,13 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 return err;
             }
             
+            int callout_depth = 0;
+            
+            if (func_list_depth != 0)
+            {
+                callout_depth = func_list_depth + 1;
+            }
+            
             // Set up the info stanza
             info.fFunctionStart = func_start;
             info.fFunctionEnd = func_stop;
@@ -336,7 +387,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             info.fSelEnd = func_stop;
             info.fFirstChar = func_start;
             info.fKind = callout_kind;
-            info.fIndentLevel = 0;
+            info.fIndentLevel = callout_depth;
             info.fFlags = 0;
             info.fNameStart = offset;
             info.fNameLength = func_name_length;
@@ -570,8 +621,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 if (is_known_type)
                 {
-                    
-                    
                     beyond_eof = false;
                     if (skipWhiteSpace(&iter, &point)) break;
                     if (point.ch == '[')
@@ -579,30 +628,33 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                         int param_char_count = 0;
                         // We have an option block
                         // Scan forward until close of option block
-                        // TODO: find a more graceful way to handle open parameter blocks in this context!
-                        while (point.ch != ']' && point.ch != '\\' && param_char_count < MAX_PARAM_SIZE)
+                        
+                        while (inParamBlock(&iter, &point, param_char_count) && point.ch != ']')
                         {
-                            // Increase the count so we can guess if we have a mal-formed command parameter block
+                            // NOTE: WIth this solution, folding is locally broken by a malformed parameter block.
+                            
+                            // Increase the count so we can guess if we have a malformed command parameter block
                             param_char_count += 1;
                             // Look for a title key
                             if (iter.strcmp("title") == 0)
                             {
                                 // scan forward to {
-                                while (point.prev != '{' && param_char_count < MAX_PARAM_SIZE)
+                                while (inParamBlock(&iter, &point, param_char_count) && point.prev != '{' )
                                 {
                                     param_char_count += 1;
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                                 }
                                 info.fSelStart = point.pos;
                                 // Get the title text (we do not expect the title text to include line breaks)
-                                while(*iter != '}' && *iter != ']' && *iter != '\r' && param_char_count < MAX_PARAM_SIZE)
+                                while(inParamBlock(&iter, &point, param_char_count) && *iter != '}' && *iter != ']' && *iter != '\r')
                                 {
                                     param_char_count += 1;
                                     curr_title.push_back(point.ch);
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                                 }
                                 info.fSelEnd = point.pos;
-                                while (point.prev != ']' && param_char_count < MAX_PARAM_SIZE)
+                                if (rollBack(&iter, &point)) {beyond_eof = true; break;}
+                                while (inParamBlock(&iter, &point, param_char_count) && point.ch != ']')
                                 {
                                     param_char_count += 1;
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
@@ -614,7 +666,9 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                             }
                             if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                         } //End of option block scan
-                        
+
+                        // Reprocess the current character
+                        if (rollBack(&iter, &point)) {beyond_eof = true; break;}
 
                     } // End of option block check
                     
