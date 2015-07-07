@@ -23,14 +23,10 @@
 	<key>com.barebones.bblminfo</key>
 	<array>
 		<dict>
-			<key>BBLMSupportsPredefinedNameLookups</key>
-			<string>NO</string>
-			<key>BBLMPredefinedNameFileName</key>
-			<string>context_commands.txt</string>
 			<key>BBLMCanResolveIncludeFiles</key>
 			<true/>
 			<key>BBLMSupportsTextCompletion</key>
-			<false/>
+			<true/>
 			<key>BBLMCompletableRunKinds</key>
 			<array>
 				<string>com.barebones.bblm.code</string>
