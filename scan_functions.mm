@@ -520,7 +520,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             {
                 vector<UniChar> curr_id;    // Text of current command
                 fold_info curr_fold;        //
-                int TYPE_SKIP = 2;          // Number of characters to skip to get to command type
+                UInt32 TYPE_SKIP = 2;          // Number of characters to skip to get to command type
                 
                 curr_fold.start = point.line_start;
                 // Pull the command type into a vector
@@ -535,7 +535,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 OSErr err;                  // Return check
                 vector<UniChar> curr_id;    // Text of current command
                 fold_info curr_fold;        // Fold from the top of the fold stack
-                int TYPE_SKIP = 2;          // Number of characters to skip to get to command type
+                UInt32 TYPE_SKIP = 2;          // Number of characters to skip to get to command type
                 string tt;                  // temp string of current command
                
                 if (getCommandType(&iter, &point, &curr_id, TYPE_SKIP)) break;
@@ -548,7 +548,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     if (curr_fold.name.compare(tt) == 0 )
                     {
                         pend_folds.pop();
-                        fold_length = point.pos - curr_fold.start - tt.length() - TYPE_SKIP;
+                        fold_length = point.pos - curr_fold.start - (UInt32)tt.length() - TYPE_SKIP;
                         if (fold_length > 0)
                         {
                             err = bblmAddFoldRange(&bblm_callbacks, curr_fold.start, fold_length);
@@ -660,7 +660,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                                     if (skipChars(&iter, &point, 1)) {beyond_eof = true; break;}
                                 }
                                 // We have a better place to start the fold
-                                curr_fold.start = point.pos;
+                                curr_fold.start = point.pos + 1;
                                 
                                 if (beyond_eof) {break;}
                             }
@@ -685,7 +685,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     // Prepare for the token
                     UInt32 func_title_length;
                     UInt32 offset = 0;
-                    func_title_length = curr_title.size();
+                    func_title_length = (UInt32)curr_title.size();
                     UniChar *ident = &curr_title[0];
                     // Set up the token
                     err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_title_length, &offset);
@@ -741,7 +741,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     if (curr_fold.name.compare(cmd_type) == 0 )
                     {
                         pend_folds.pop();
-                        fold_length = point.pos - curr_fold.start - cmd_type.length() - TYPE_SKIP;
+                        fold_length = point.pos - curr_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
                         if (fold_length > 0)
                         {
                             err = bblmAddFoldRange(&bblm_callbacks, curr_fold.start, fold_length);
