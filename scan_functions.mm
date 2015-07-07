@@ -309,97 +309,100 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     
     while(true) // We test for our out of bounds conditions when skipping characters
     {
-        // Test for markers
+        // Test for Callouts in Comments
+        if (point.in_comment)
         {
-        UInt32 callout_kind = 0;
-        
-        if (iter.strcmp("FIXME: ") == 0) {
-            callout_kind = kBBLMFixMeCallout;
-        }
+            {
+            UInt32 callout_kind = 0;
+            
+            if (iter.strcmp("FIXME: ") == 0) {
+                callout_kind = kBBLMFixMeCallout;
+            }
 
-        else if (iter.strcmp("TODO: ") == 0) {
-            callout_kind = kBBLMToDoCallout;
-        }
-        
-        else if (iter.strcmp("REVIEW: ") == 0) {
-            callout_kind = kBBLMReviewCallout;
-        }
-        
-        else if (iter.strcmp("???: ") == 0) {
-            callout_kind = kBBLMQuestionCallout;
-        }
+            else if (iter.strcmp("TODO: ") == 0) {
+                callout_kind = kBBLMToDoCallout;
+            }
+            
+            else if (iter.strcmp("REVIEW: ") == 0) {
+                callout_kind = kBBLMReviewCallout;
+            }
+            
+            else if (iter.strcmp("???: ") == 0) {
+                callout_kind = kBBLMQuestionCallout;
+            }
 
-        else if (iter.strcmp("!!!: ") == 0) {
-            callout_kind = kBBLMWarningCallout;
-        }
-        
-        else if (iter.strcmp("NOTE: ") == 0) {
-            callout_kind = kBBLMNoteCallout;
-        }
-        
-        if (callout_kind != 0)
-        {
-            UInt32 func_start = point.pos;
-            UInt32 func_stop = 0;
-            UInt32 func_name_start = 0;
-            UInt32 func_name_stop = 0;
-            BBLMProcInfo info;
-            
-            OSErr err;
-            
-            vector<UniChar> curr_marker;
-            
-            func_name_start = point.pos;
-            
-            while (*iter != '\r') {
-                // Collect Characters until we get to the end of the line
-                //curr_ch = *iter;
-                curr_marker.push_back(point.ch);
-                if (skipChars(&iter, &point, 1)) break;
+            else if (iter.strcmp("!!!: ") == 0) {
+                callout_kind = kBBLMWarningCallout;
             }
             
-            func_stop = point.pos;
-            func_name_stop = point.pos;
+            else if (iter.strcmp("NOTE: ") == 0) {
+                callout_kind = kBBLMNoteCallout;
+            }
             
-            // ident is the first Unichar of curr_marker
-            UniChar *ident = &curr_marker[0];
-            UInt32 offset = 0;
-            UInt32 func_name_length = func_name_stop - func_name_start;
-            
-            // Set up the token
-            err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_name_length, &offset);
-            if (err)
+            if (callout_kind != 0)
             {
-                return err;
+                UInt32 func_start = point.pos;
+                UInt32 func_stop = 0;
+                UInt32 func_name_start = 0;
+                UInt32 func_name_stop = 0;
+                BBLMProcInfo info;
+                
+                OSErr err;
+                
+                vector<UniChar> curr_marker;
+                
+                func_name_start = point.pos;
+                
+                while (*iter != '\r') {
+                    // Collect Characters until we get to the end of the line
+                    //curr_ch = *iter;
+                    curr_marker.push_back(point.ch);
+                    if (skipChars(&iter, &point, 1)) break;
+                }
+                
+                func_stop = point.pos;
+                func_name_stop = point.pos;
+                
+                // ident is the first Unichar of curr_marker
+                UniChar *ident = &curr_marker[0];
+                UInt32 offset = 0;
+                UInt32 func_name_length = func_name_stop - func_name_start;
+                
+                // Set up the token
+                err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_name_length, &offset);
+                if (err)
+                {
+                    return err;
+                }
+                
+                int callout_depth = 0;
+                
+                if (func_list_depth != 0)
+                {
+                    callout_depth = func_list_depth + 1;
+                }
+                
+                // Set up the info stanza
+                info.fFunctionStart = func_start;
+                info.fFunctionEnd = func_stop;
+                info.fSelStart = func_start;
+                info.fSelEnd = func_stop;
+                info.fFirstChar = func_start;
+                info.fKind = callout_kind;
+                info.fIndentLevel = callout_depth;
+                info.fFlags = 0;
+                info.fNameStart = offset;
+                info.fNameLength = func_name_length;
+                
+                UInt32 func_index = 0;
+                err = bblmAddFunctionToList(&bblm_callbacks, params.fFcnParams.fFcnList,info, &func_index);
+                if (err)
+                {
+                    return err;
+                }
             }
             
-            int callout_depth = 0;
-            
-            if (func_list_depth != 0)
-            {
-                callout_depth = func_list_depth + 1;
             }
-            
-            // Set up the info stanza
-            info.fFunctionStart = func_start;
-            info.fFunctionEnd = func_stop;
-            info.fSelStart = func_start;
-            info.fSelEnd = func_stop;
-            info.fFirstChar = func_start;
-            info.fKind = callout_kind;
-            info.fIndentLevel = callout_depth;
-            info.fFlags = 0;
-            info.fNameStart = offset;
-            info.fNameLength = func_name_length;
-            
-            UInt32 func_index = 0;
-            err = bblmAddFunctionToList(&bblm_callbacks, params.fFcnParams.fFcnList,info, &func_index);
-            if (err)
-            {
-                return err;
-            }
-        }
-        
         }
         // End testing for markers
         
