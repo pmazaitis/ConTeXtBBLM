@@ -11,10 +11,91 @@
 #include "context.h"
 #include <string>
 
-//#include <CoreFoundation/CoreFoundation.h>
-//#include <Foundation/Foundation.h>
+#pragma mark - Globals
 
-#pragma mark -
+NSArray* global_commands_dict = NULL;
+
+#pragma mark - Setup and Teardown
+
+// Set up global data structures
+//static OSErr initData()
+//{
+//    OSErr result = noErr;
+//    NSArray *command_array = [[NSArray alloc] initWithObjects: @"none", nil];
+//
+//    //
+//    NSBundle* my_bundle = [NSBundle bundleWithIdentifier:@"org.mazaitis.bblm.context"];
+//    if (my_bundle != nil)
+//    {
+//        NSString* file_path = [my_bundle pathForResource:@"context_commands" ofType:@"txt"];
+//        NSLog(@"### Initializing Command Data");
+//        NSLog(@"### Using file: %@", file_path);
+//        NSCharacterSet *newline_char_set = [NSCharacterSet newlineCharacterSet];
+//        NSString* file_contents = [NSString stringWithContentsOfFile:file_path
+//                                                            encoding:NSUTF8StringEncoding
+//                                                               error:nil];
+//        command_array = [file_contents componentsSeparatedByCharactersInSet:newline_char_set];
+//    }
+//
+//    for (id command in command_array)
+//    {
+//        NSLog(@"### Found command %@", command);
+//    }
+//    
+//    // Now, build the dictionary
+//    
+//    //global_commands_dict = [[completion objectForKey: FUNCTIONS_FOR_COMPLETION] retain];
+////    
+////    for (id command in command_array)
+////    {
+////        [global_commands_dict ];
+////    }
+//    
+//
+//    
+//    
+//    return (result);
+//}
+
+
+
+
+// Clean up global data structures
+//static void disposeData()
+//{
+//    [global_commands_dict release];
+//    global_commands_dict = nil;
+//}
+
+
+
+
+#pragma mark - Completion
+
+//static void createTextCompletionArray(bblmCreateCompletionArrayParams &io_params)
+//{
+//    UInt32 additional_lookup = kBBLMSymbolLookupPredefinedNames | kBBLMSymbolLookupClippings | kBBLMSymbolLookupWordsInFrontWindow;
+//    
+//    NSMutableArray* completion_array = [[NSMutableArray alloc] init];
+//
+//    NSDictionary* the_completion_dict = [[NSDictionary alloc] initWithObjectsAndKeys:
+//                                       @"com.barebones.bblm.function",
+//                                       kBBLMCompletionSymbolType,
+//                                       @"\\starttext",
+//                                       kBBLMSymbolCompletionDisplayString,
+//                                       @"\\starttext",
+//                                       kBBLMSymbolCompletionText,
+//                                       nil];
+//    
+//    [completion_array addObject: the_completion_dict];
+//    //[the_completion_dict release];
+//    
+//    io_params.fOutAdditionalLookupFlags = additional_lookup;
+//    io_params.fOutSymbolCompletionArray = (CFArrayRef) completion_array;
+//    io_params.fOutPreferredCompletionIndex = 0;    
+//}
+
+#pragma mark - Utility Functions
 
 // Roll back to the start of the more recent text run
 
@@ -76,15 +157,6 @@ static void isRunSpellable(BBLMParamBlock &params)
     }
 }
 
-// Completion
-
-static void createTextCompletionArray(bblmCreateCompletionArrayParams &io_params)
-{
-    
-}
-
-// See if there's a new SDK with the new URL-style interface?
-
 static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
 {
     NSError *err;
@@ -108,7 +180,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     
     // Directories we want to search
     //
-    // At the moment, this does upward path searching to /Users
+    // At the moment, this does upward path searching to /Users (or /)
     // Other places we could see this from:
     // * texmf tree
     // * user environment variables
@@ -168,6 +240,8 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     }
 }
 
+#pragma mark - Entry Point
+
 extern "C"
 {
 
@@ -201,9 +275,15 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
 	switch (params.fMessage)
 	{
 		case kBBLMInitMessage:
+        {
+            //result = initData();
+            result = noErr;
+            break;
+        }
 		case kBBLMDisposeMessage:
 		{
-			result = noErr;	// nothing to do
+            //disposeData();
+            result = noErr;
 			break;
 		}
 		
@@ -262,7 +342,7 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
         }
         case kBBLMCreateTextCompletionArray:
         {
-            createTextCompletionArray(params.fCreateCompletionArrayParams);
+            //createTextCompletionArray(params.fCreateCompletionArrayParams);
             result = noErr;
             break;
         }
