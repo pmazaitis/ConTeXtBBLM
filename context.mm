@@ -95,6 +95,66 @@ NSArray* global_commands_dict = NULL;
 //    io_params.fOutPreferredCompletionIndex = 0;    
 //}
 
+static void createTextCompletionArray(BBLMParamBlock &params)
+{
+    bblmCreateCompletionArrayParams	&completionParams = params.fCreateCompletionArrayParams;
+    if ([kBBLMCodeRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind]  ||
+        [kBBLMCommentRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind] )
+    {
+        //	no change
+        NSMutableArray* completion_array = [[NSMutableArray alloc] init];
+        
+        NSDictionary* the_completion_dict = [[NSDictionary alloc] initWithObjectsAndKeys:
+                                             @"com.barebones.bblm.function",
+                                             kBBLMCompletionSymbolType,
+                                             @"\\starttext",
+                                             kBBLMSymbolCompletionDisplayString,
+                                             @"\\starttext",
+                                             kBBLMSymbolCompletionText,
+                                             nil];
+        
+        [completion_array addObject: the_completion_dict];
+        [the_completion_dict release];
+        
+        //completionParams.fOutAdditionalLookupFlags = additional_lookup;
+        completionParams.fOutSymbolCompletionArray = (CFArrayRef) completion_array;
+        completionParams.fOutPreferredCompletionIndex = 0;
+    }
+    else
+    {
+        completionParams.fOutAdditionalLookupFlags &= (~ kBBLMSymbolLookupWordsInSystemDict);
+    }
+}
+
+//this one is working
+//static void createTextCompletionArray(BBLMParamBlock &params)
+//{
+//    bblmCreateCompletionArrayParams	&completionParams = params.fCreateCompletionArrayParams;
+//    if ([kBBLMCodeRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind]  ||
+//        [kBBLMCommentRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind] )
+//    {
+//        //	no change
+//        /*...*/
+//    }
+//    else
+//    {
+//        completionParams.fOutAdditionalLookupFlags &= (~ kBBLMSymbolLookupWordsInSystemDict);
+//    }
+//}
+
+
+static void	adjustRangeForTextCompletion(BBLMParamBlock &params)
+{
+    bblmAdjustCompletionRangeParams	&completionParams = params.fAdjustCompletionRangeParams;
+    
+    //	never complete against an empty range
+    if (0 == completionParams.fInProposedCompletionRange.length)
+        completionParams.fOutAdjustedCompletionRange = CFRangeMake(kCFNotFound, 0);
+    else
+        completionParams.fOutAdjustedCompletionRange = completionParams.fInProposedCompletionRange;
+}
+
+
 #pragma mark - Utility Functions
 
 // Roll back to the start of the more recent text run
@@ -181,7 +241,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     // Directories we want to search
     //
     // At the moment, this does upward path searching to /Users (or /)
-    // Other places we could see this from:
+    // Other places we could seed this from:
     // * texmf tree
     // * user environment variables
     //
@@ -223,19 +283,23 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         }
     }
     
-    // TODO: sanity check this: don't clobber files
+    // We couldn't find the file, so create the file in the same dir as the source file
     if (not_found)
     {
         candidate_name = [doc_dir URLByAppendingPathComponent:doc_name];
-        // We couldn't find the file, so create the file in the same dir as the source file
-        NSURL *creation_URL = [candidate_name URLByAppendingPathExtension:@"tex"];
-        NSString* create_file = [creation_URL path];
-        [fileManager createFileAtPath:create_file contents:nil attributes:nil];
-
-        // Send the new file name to be displayed in the menu?
         
-        if ([fileManager fileExistsAtPath: create_file]) {
-            io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: create_file] retain];
+        // (We should never need this test, but: being safe, here)
+        if ([candidate_name checkResourceIsReachableAndReturnError:&err] == NO )
+        {
+            NSURL *creation_URL = [candidate_name URLByAppendingPathExtension:@"tex"];
+            NSString* create_file = [creation_URL path];
+            [fileManager createFileAtPath:create_file contents:nil attributes:nil];
+
+            // Send the new file name to be displayed in the menu
+            
+            if ([fileManager fileExistsAtPath: create_file]) {
+                io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: create_file] retain];
+            }
         }
     }
 }
@@ -323,34 +387,33 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
             isRunSpellable(params);
             break;
         }
-        case kBBLMSetCategoriesMessage:
-        {
-            break;
-        }
 		case kBBLMEscapeStringMessage:
 		{
 			result = userCanceledErr;
 			break;
 		}
-        case kBBLMAdjustRangeForTextCompletion:
-        {
-            break;
-        }
         case kBBLMFilterRunForTextCompletion:
         {
             break;
         }
-        case kBBLMCreateTextCompletionArray:
-        {
-            //createTextCompletionArray(params.fCreateCompletionArrayParams);
-            result = noErr;
-            break;
-        }
+            
+        case kBBLMSetCategoriesMessage:
         case kBBLMSetCategoriesForTextCompletionMessage:
         {
-            SInt8*  cat = params.fCategoryParams.fCategoryTable;
+            SInt8*	cat = params.fCategoryParams.fCategoryTable;
             
-            cat[92] = 'a'; //(int)'\\'
+            cat[(unsigned char)'\\'] = '<';
+            break;
+        }
+        case kBBLMAdjustRangeForTextCompletion:
+        {
+            adjustRangeForTextCompletion(params);
+            break;
+        }
+        case kBBLMCreateTextCompletionArray:
+        {
+            createTextCompletionArray(params);
+            result = noErr;
             break;
         }
         case kBBLMResolveIncludeFileMessage:
