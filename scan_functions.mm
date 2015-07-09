@@ -250,8 +250,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     //
     // Indentation in the function drop-down reflects indentation in the document.
     //
-    // The scanner will look for a set list of callouts, and add these callouts
-    // to the function drop-down when found. Callouts are not indented.
+    // The scanner will look for a set list of callouts in comment regions, and add
+    // these callouts to the function drop-down when found. Callouts are not indented.
     //
     // # Limitations
     //
@@ -287,7 +287,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     int consec_comment_lines = 0;   // How many consecutive lines of comments to we have?
     UInt32 comm_fold_length = 0;    //
 
-    
+    // TODO: use a block in the Info.plist to supply these values.
     vector<string> valid_titles = { "part",
                                     "chapter",
                                     "section",
@@ -567,16 +567,16 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             {
                 // We want to populate the info block as we go:
                 //
-                // info.fFunctionStart  = point.line_start;
-                // info.fFunctionEnd    = func_stop;
-                // info.fSelStart       = func_name_start; // title key
-                // info.fSelEnd         = func_name_stop; //title key
-                // info.fFirstChar      = func_start;
-                // info.fKind           = kBBLMFunctionMark;
-                // info.fIndentLevel    = func_list_depth;
-                // info.fFlags          = 0;
-                // info.fNameStart      = offset;
-                // info.fNameLength     = func_name_length;
+                // info.fFunctionStart
+                // info.fFunctionEnd
+                // info.fSelStart
+                // info.fSelEnd
+                // info.fFirstChar
+                // info.fKind
+                // info.fIndentLevel
+                // info.fFlags
+                // info.fNameStart
+                // info.fNameLength
                 
                 
                 BBLMProcInfo info;
