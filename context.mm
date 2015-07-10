@@ -13,111 +13,88 @@
 
 #pragma mark - Globals
 
-NSArray* global_commands_dict = NULL;
+NSMutableArray* global_command_array = [[NSMutableArray alloc] init];
 
 #pragma mark - Setup and Teardown
 
 // Set up global data structures
-//static OSErr initData()
-//{
-//    OSErr result = noErr;
-//    NSArray *command_array = [[NSArray alloc] initWithObjects: @"none", nil];
-//
-//    //
-//    NSBundle* my_bundle = [NSBundle bundleWithIdentifier:@"org.mazaitis.bblm.context"];
-//    if (my_bundle != nil)
-//    {
-//        NSString* file_path = [my_bundle pathForResource:@"context_commands" ofType:@"txt"];
-//        NSLog(@"### Initializing Command Data");
-//        NSLog(@"### Using file: %@", file_path);
-//        NSCharacterSet *newline_char_set = [NSCharacterSet newlineCharacterSet];
-//        NSString* file_contents = [NSString stringWithContentsOfFile:file_path
-//                                                            encoding:NSUTF8StringEncoding
-//                                                               error:nil];
-//        command_array = [file_contents componentsSeparatedByCharactersInSet:newline_char_set];
-//    }
-//
-//    for (id command in command_array)
-//    {
-//        NSLog(@"### Found command %@", command);
-//    }
-//    
-//    // Now, build the dictionary
-//    
-//    //global_commands_dict = [[completion objectForKey: FUNCTIONS_FOR_COMPLETION] retain];
-////    
-////    for (id command in command_array)
-////    {
-////        [global_commands_dict ];
-////    }
-//    
-//
-//    
-//    
-//    return (result);
-//}
+static OSErr initData()
+{
+    OSErr result = noErr;
+    NSArray *command_array = [[NSArray alloc] init];
+    
+    //
+    NSBundle* my_bundle = [NSBundle bundleWithIdentifier:@"org.mazaitis.bblm.context"];
+    if (my_bundle != nil)
+    {
+        NSString* file_path = [my_bundle pathForResource:@"context-commands-en" ofType:@"txt"];
+        NSLog(@"### Initializing Command Data");
+        NSLog(@"### Using file: %@", file_path);
+        NSCharacterSet *newline_char_set = [NSCharacterSet newlineCharacterSet];
+        NSString* file_contents = [NSString stringWithContentsOfFile:file_path
+                                                            encoding:NSUTF8StringEncoding
+                                                               error:nil];
+        command_array = [file_contents componentsSeparatedByCharactersInSet:newline_char_set];
+    }
+
+    for (id command in command_array)
+    {
+        if ([command isNotEqualTo: @""])
+        {
+            NSLog(@"### Found command %@", command);
+            [global_command_array addObject: command];
+        }
+    }
+    return (result);
+}
 
 
 
 
 // Clean up global data structures
-//static void disposeData()
-//{
-//    [global_commands_dict release];
-//    global_commands_dict = nil;
-//}
+static void disposeData()
+{
+    [global_command_array release];
+    global_command_array = nil;
+}
 
 
 
 
 #pragma mark - Completion
 
-//static void createTextCompletionArray(bblmCreateCompletionArrayParams &io_params)
-//{
-//    UInt32 additional_lookup = kBBLMSymbolLookupPredefinedNames | kBBLMSymbolLookupClippings | kBBLMSymbolLookupWordsInFrontWindow;
-//    
-//    NSMutableArray* completion_array = [[NSMutableArray alloc] init];
-//
-//    NSDictionary* the_completion_dict = [[NSDictionary alloc] initWithObjectsAndKeys:
-//                                       @"com.barebones.bblm.function",
-//                                       kBBLMCompletionSymbolType,
-//                                       @"\\starttext",
-//                                       kBBLMSymbolCompletionDisplayString,
-//                                       @"\\starttext",
-//                                       kBBLMSymbolCompletionText,
-//                                       nil];
-//    
-//    [completion_array addObject: the_completion_dict];
-//    //[the_completion_dict release];
-//    
-//    io_params.fOutAdditionalLookupFlags = additional_lookup;
-//    io_params.fOutSymbolCompletionArray = (CFArrayRef) completion_array;
-//    io_params.fOutPreferredCompletionIndex = 0;    
-//}
+static void AddSymbols(NSString* inPartial, NSMutableArray* inCompletionArray)
+{
+    for (id match in global_command_array) {
+        if ([match hasPrefix: inPartial])
+        {
+            NSDictionary* the_completion_dict = [[NSDictionary alloc] initWithObjectsAndKeys:
+                                                 @"com.barebones.bblm.function",
+                                                 kBBLMCompletionSymbolType,
+                                                 match,
+                                                 kBBLMSymbolCompletionDisplayString,
+                                                 match,
+                                                 kBBLMSymbolCompletionText,
+                                                 nil];
+            [inCompletionArray addObject: the_completion_dict];
+            [the_completion_dict release];
+        }
+    }
+}
 
 static void createTextCompletionArray(BBLMParamBlock &params)
 {
     bblmCreateCompletionArrayParams	&completionParams = params.fCreateCompletionArrayParams;
     if ([kBBLMCodeRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind]  ||
-        [kBBLMCommentRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind] )
+        [kBBLMCommandRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind]||
+        [kBBLMParameterRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind])
     {
         //	no change
-        NSMutableArray* completion_array = [[NSMutableArray alloc] init];
+        NSMutableArray* completionArray = [[NSMutableArray alloc] init];
+
+        AddSymbols((NSString*) completionParams.fInPartialSymbol, completionArray);
         
-        NSDictionary* the_completion_dict = [[NSDictionary alloc] initWithObjectsAndKeys:
-                                             @"com.barebones.bblm.function",
-                                             kBBLMCompletionSymbolType,
-                                             @"\\starttext",
-                                             kBBLMSymbolCompletionDisplayString,
-                                             @"\\starttext",
-                                             kBBLMSymbolCompletionText,
-                                             nil];
-        
-        [completion_array addObject: the_completion_dict];
-        [the_completion_dict release];
-        
-        //completionParams.fOutAdditionalLookupFlags = additional_lookup;
-        completionParams.fOutSymbolCompletionArray = (CFArrayRef) completion_array;
+        completionParams.fOutSymbolCompletionArray = (CFArrayRef) completionArray;
         completionParams.fOutPreferredCompletionIndex = 0;
     }
     else
@@ -125,23 +102,6 @@ static void createTextCompletionArray(BBLMParamBlock &params)
         completionParams.fOutAdditionalLookupFlags &= (~ kBBLMSymbolLookupWordsInSystemDict);
     }
 }
-
-//this one is working
-//static void createTextCompletionArray(BBLMParamBlock &params)
-//{
-//    bblmCreateCompletionArrayParams	&completionParams = params.fCreateCompletionArrayParams;
-//    if ([kBBLMCodeRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind]  ||
-//        [kBBLMCommentRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind] )
-//    {
-//        //	no change
-//        /*...*/
-//    }
-//    else
-//    {
-//        completionParams.fOutAdditionalLookupFlags &= (~ kBBLMSymbolLookupWordsInSystemDict);
-//    }
-//}
-
 
 static void	adjustRangeForTextCompletion(BBLMParamBlock &params)
 {
@@ -236,7 +196,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     
     NSURL *doc_dir = [NSURL URLWithString: doc_dir_string];
     // The explicit argument to the \environment command - may be valid
-    NSURL *candidate_name = [doc_dir URLByAppendingPathComponent:doc_name];
+    NSURL *candidate_name;
     
     // Directories we want to search
     //
@@ -302,6 +262,8 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
             }
         }
     }
+    [search_paths release];
+    search_paths = nil;
 }
 
 #pragma mark - Entry Point
@@ -340,13 +302,12 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
 	{
 		case kBBLMInitMessage:
         {
-            //result = initData();
-            result = noErr;
+            result = initData();
             break;
         }
 		case kBBLMDisposeMessage:
 		{
-            //disposeData();
+            disposeData();
             result = noErr;
 			break;
 		}
