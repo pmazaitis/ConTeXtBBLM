@@ -13,6 +13,8 @@
 
 #include "context.h"
 
+#include "syslog.h"
+
 #define MAX_PARAM_SIZE 256
 
 using namespace std;
@@ -31,7 +33,8 @@ struct func_point_info
 struct fold_info
 {
     UInt32 start = 0;           // Start position of the fold
-    string name = "";           // Command name of the fold
+    UInt32 line_start = 0;      // Line number where the fold starts
+    string type = "";           // Command name of the fold
 };
 
 struct func_info
@@ -161,6 +164,12 @@ static bool rollBack(BBLMTextIterator* iter, func_point_info* p)
     (*iter)--;
     (p->pos)--;
     
+    if (**iter == '\r')
+    {
+        p->line_number -= 1;
+    }
+    
+    
     if (iter->InBounds())
     {
         p->ch = **iter;
@@ -173,21 +182,39 @@ static bool rollBack(BBLMTextIterator* iter, func_point_info* p)
 }
 
 
-static bool getCommandType(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_id, int skip)
+static bool getCommandNameAndType(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_name, vector<UniChar>* c_type, int skip)
 {
     // Skip requested characters to get to the relevant bit of the command
     for(int i=0; i < skip; i++)
     {
+        c_name->push_back(p->ch);
         if (skipChars(iter, p, 1)) return true;
     }
     // Collect Characters until we get to the end of the command
-    while (isalnum(**iter))
+    while (isalnum(**iter) || **iter == '\\')
     {
-        c_id->push_back(p->ch);
+        c_name->push_back(p->ch);
+        c_type->push_back(p->ch);
         if (skipChars(iter, p, 1)) return true;
     }
     return(false);
 }
+
+//static bool getCommandType(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_id, int skip)
+//{
+//    // Skip requested characters to get to the relevant bit of the command
+//    for(int i=0; i < skip; i++)
+//    {
+//        if (skipChars(iter, p, 1)) return true;
+//    }
+//    // Collect Characters until we get to the end of the command
+//    while (isalnum(**iter) || **iter == '\\')
+//    {
+//        c_id->push_back(p->ch);
+//        if (skipChars(iter, p, 1)) return true;
+//    }
+//    return(false);
+//}
 
 static bool inParamBlock(BBLMTextIterator* iter, func_point_info* p, int param_char_count)
 {
@@ -260,6 +287,10 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     //   structure four levels deeper than _part_ for the functions list.
     // * Only supports mkiv style sectioning
     // * Will only find user-specified heads that are set up before use.
+    //
+    // TODO: handle component pairs
+    
+    NSLog(@"###### Starting function scan.");
     
     BBLMTextIterator iter(params);  // Iterator as supplied by calling code
     OSErr  result = noErr;          // Return check
@@ -277,7 +308,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     stack<UInt32> pend_funcs;    // Keep track of pending functions
     stack<fold_info> pend_folds;    // Keep track of pending folds
 
-    int func_list_depth = 0;        // Keep track of visible funciton depth
+    // Keep track of visible funciton depth
+    int func_list_depth = 0;
     
     // General placeholder for fold_length calculations
     UInt32 fold_length = 0;    //
@@ -288,15 +320,19 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     UInt32 comm_fold_length = 0;    //
 
     // TODO: use a block in the Info.plist to supply these values.
-    vector<string> valid_titles = { "part",
-                                    "chapter",
-                                    "section",
-                                    "subsection",
-                                    "subsubsection",
-                                    "title",
-                                    "subject",
-                                    "subsubject",
-                                    "subsubsubject"};
+    vector<string> valid_title_types = {    "part",
+                                            "chapter",
+                                            "section",
+                                            "subsection",
+                                            "subsubsection",
+                                            "subsubsubsection",
+                                            "subsubsubsubsection",
+                                            "title",
+                                            "subject",
+                                            "subsubject",
+                                            "subsubsubject",
+                                            "subsubsubsubject",
+                                            "subsubsubsubsubject"};
     
     iter += point.pos; // TODO: do we ever want to get this value from the params block?
     
@@ -517,38 +553,41 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     new_head_definition += point.ch;
                     if (skipChars(&iter, &point, 1)) break;
                 }
-                valid_titles.push_back(new_head_definition); // Add our new definition to the list of valid heads
+                valid_title_types.push_back(new_head_definition); // Add our new definition to the list of valid heads
             }
             if (!point.in_comment && (iter.strcmp("\\bTABLE") == 0 || iter.strcmp("\\bTR") == 0))
             {
-                vector<UniChar> curr_id;    // Text of current command
+                vector<UniChar> curr_name;    // Name of current command
+                vector<UniChar> curr_type;    // Type of current command
                 fold_info curr_fold;        //
                 UInt32 TYPE_SKIP = 2;          // Number of characters to skip to get to command type
                 
                 curr_fold.start = point.line_start;
                 // Pull the command type into a vector
-                if (getCommandType(&iter, &point, &curr_id, TYPE_SKIP)) break;
+                if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
                 // Set the values for the fold, and add it to the stack
-                curr_fold.name.assign(curr_id.begin(), curr_id.end());
-                curr_fold.start += curr_fold.name.length() + TYPE_SKIP;
+                curr_fold.type.assign(curr_type.begin(), curr_type.end());
+                curr_fold.start += curr_fold.type.length() + TYPE_SKIP;
+                curr_fold.line_start = point.line_start;
                 pend_folds.push(curr_fold);
             }
             if (!point.in_comment && (iter.strcmp("\\eTABLE") == 0 || iter.strcmp("\\eTR") == 0))
             {
                 OSErr err;                  // Return check
-                vector<UniChar> curr_id;    // Text of current command
+                vector<UniChar> curr_name;    // Name of current command
+                vector<UniChar> curr_type;    // Type of current command
                 fold_info curr_fold;        // Fold from the top of the fold stack
                 UInt32 TYPE_SKIP = 2;          // Number of characters to skip to get to command type
                 string tt;                  // temp string of current command
                
-                if (getCommandType(&iter, &point, &curr_id, TYPE_SKIP)) break;
-                tt.assign(curr_id.begin(), curr_id.end());
+                if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
+                tt.assign(curr_type.begin(), curr_type.end());
                 
                 if ( !pend_folds.empty())
                 {
                     curr_fold = pend_folds.top();
                     
-                    if (curr_fold.name.compare(tt) == 0 )
+                    if (curr_fold.type.compare(tt) == 0 )
                     {
                         pend_folds.pop();
                         fold_length = point.pos - curr_fold.start - (UInt32)tt.length() - TYPE_SKIP;
@@ -582,18 +621,21 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 BBLMProcInfo info;
                 OSErr err;
                 
-                vector<UniChar> curr_id;
+                vector<UniChar> curr_name;    // Name of current command
+                vector<UniChar> curr_type;    // Type of current command
                 vector<UniChar> curr_title;
                 fold_info curr_fold;
                 int TYPE_SKIP = 6;              // Number of characters to skip to get to command type
                 bool show_fold = true;          // Stop from folding if in comment
+                string cmd_name;                // Keep track of current command
                 string cmd_type;                // Keep track of current command type (text after \start or \stop)
                 
                 // Track initial state
                 if (point.in_comment) {show_fold = false;}
-                if (getCommandType(&iter, &point, &curr_id, TYPE_SKIP)) break;
-                cmd_type.assign(curr_id.begin(), curr_id.end());
-                bool is_known_type = (find(valid_titles.begin(), valid_titles.end(), cmd_type) != valid_titles.end());
+                if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
+                cmd_name.assign(curr_name.begin(), curr_name.end());
+                cmd_type.assign(curr_type.begin(), curr_type.end());
+                bool is_known_type = (find(valid_title_types.begin(), valid_title_types.end(), cmd_type) != valid_title_types.end());
 
                 // Set up info stanza as far as we can
                 info.fFunctionStart = point.line_start;
@@ -602,11 +644,14 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 info.fKind = kBBLMFunctionMark;
                 info.fFlags = 0;
                 
-                // Handle Folds
-                curr_fold.name = cmd_type;
-                curr_fold.start = point.pos;
+                syslog(LOG_WARNING, "### Found start command %s of type %s at line %d", cmd_name.c_str(), cmd_type.c_str(), (unsigned int)point.line_number);
                 
-                if (cmd_type == "text" && point.line_number > 4 && show_fold)
+                // Handle Folds
+                curr_fold.type = cmd_type;
+                curr_fold.start = point.pos;
+                curr_fold.line_start = point.line_start;
+                
+                if (cmd_name == "\\starttext" && point.line_number > 4 && show_fold)
                 {
                     // Close off preamble fold, end is linestart - 1
                     int fold_start = 0;
@@ -634,8 +679,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                         
                         while (inParamBlock(&iter, &point, param_char_count) && point.ch != ']')
                         {
-                            // NOTE: WIth this solution, folding is locally broken by a malformed parameter block.
-                            
                             // Increase the count so we can guess if we have a malformed command parameter block
                             param_char_count += 1;
                             // Look for a title key
@@ -724,24 +767,29 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             {
                 BBLMProcInfo info;
                 OSErr err;                  // Return check
-                vector<UniChar> curr_id;    // Text of current command
+                vector<UniChar> curr_name;  // Text of current command
+                vector<UniChar> curr_type;  // Text of current command
                 UInt32 curr_func_idx;       // Index of current function
                 fold_info curr_fold;        // Fold from the top of the fold stack
                 int TYPE_SKIP = 5;          // Number of characters to skip to get to command type
-                string cmd_type;            // temp string of current command
+                string cmd_name;            // temp string of current command name
+                string cmd_type;            // temp string of current command type
                 bool show_fold = true;      // Stop from folding if in comment
 
                 // Track initial state
                 if (point.in_comment) {show_fold = false;}
-                if (getCommandType(&iter, &point, &curr_id, TYPE_SKIP)) break;
-                cmd_type.assign(curr_id.begin(), curr_id.end());
-                bool is_known_type = (find(valid_titles.begin(), valid_titles.end(), cmd_type) != valid_titles.end());
+                if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
+                cmd_name.assign(curr_name.begin(), curr_name.end());
+                cmd_type.assign(curr_type.begin(), curr_type.end());
+                bool is_known_type = (find(valid_title_types.begin(), valid_title_types.end(), cmd_type) != valid_title_types.end());
+                
+                syslog(LOG_WARNING, "### Found stop command %s of type %s at line %d", cmd_name.c_str(), cmd_type.c_str(), (unsigned int)point.line_number);
                 
                 // Handle Folds
                 if (show_fold && !pend_folds.empty())
                 {
                     curr_fold = pend_folds.top();
-                    if (curr_fold.name.compare(cmd_type) == 0 )
+                    if (curr_fold.type.compare(cmd_type) == 0 )
                     {
                         pend_folds.pop();
                         fold_length = point.pos - curr_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
@@ -754,23 +802,67 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                             }
                         }
                     }
+                    else
+                    {
+                        int curr_rank = 0;
+                        int pend_rank = 0;
+                        
+                        // Get the ranks of the types in question
+                        auto it_result = find(valid_title_types.begin(), valid_title_types.end(), cmd_type);
+                        if (it_result == valid_title_types.end())
+                        {
+                            // Error
+                        }
+                        else
+                        {
+                            curr_rank = std::distance(valid_title_types.begin(), it_result);
+                        }
+                        it_result = find(valid_title_types.begin(), valid_title_types.end(), curr_fold.type);
+                        if (it_result == valid_title_types.end())
+                        {
+                            // Error
+                        }
+                        else
+                        {
+                            pend_rank = std::distance(valid_title_types.begin(), it_result);
+                        }
+                        syslog(LOG_WARNING, "### WARNING: Unmatched fold %s at line %d", cmd_type.c_str(), (unsigned int)point.line_number);
+                        syslog(LOG_WARNING, "### WARNING: Pending type %s with rank %d", curr_fold.type.c_str(), (unsigned int)pend_rank);
+                        syslog(LOG_WARNING, "### WARNING: Current type %s with rank %d", cmd_type.c_str(), (unsigned int)curr_rank);
+                        
+                        if (curr_rank > pend_rank)
+                        {
+                            // With the current rank greater than the pending rank, we missed an opening command somewhere;
+                            // Discard current operation, leave the stack alone and report an error.
+                            syslog(LOG_WARNING, "ConTeXt Commented start condition");
+                            syslog(LOG_WARNING, "ConTeXt BBLM Warning: Unmatched fold %s at line %d ", cmd_name.c_str(), (unsigned int)point.line_number);
+                        }
+                        else
+                        {
+                            // Otherwise, we have a garbage fold start value on the stack; pop it, and report an error
+                            pend_folds.pop();
+                            syslog(LOG_WARNING, "ConTeXt Commented stop condition - throw away garbage fold");
+                            syslog(LOG_WARNING, "ConTeXt BBLM Warning: Unmatched fold %s at line %d", cmd_name.c_str(), (unsigned int)point.line_number);
+                        }
+                    }
                 } // End fold handling
                 
                 // handle /stoptext fold
-                if (cmd_type == "text")
+                if (cmd_name == "\\stoptext")
                 {
                     // Begin postamble fold
                     fold_info end_fold;
                     end_fold.start = point.pos +1;
-                    end_fold.name = "ENDFOLD";
+                    end_fold.type = "ENDFOLD";
                     pend_folds.push(end_fold);
                 } // end /stoptext fold
+                
                 
                 if (is_known_type && !pend_funcs.empty())
                 {
                     curr_func_idx = pend_funcs.top();
                     pend_funcs.pop();
-                    func_list_depth--;
+                    func_list_depth -= 1;
                     
                     err = bblmGetFunctionEntry(&bblm_callbacks,params.fFcnParams.fFcnList, curr_func_idx, info);
                     if (err)
@@ -802,7 +894,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
         fold_info curr_fold;
         curr_fold = pend_folds.top();
         fold_length = point.pos - curr_fold.start;
-        if (fold_length > 0 && curr_fold.name == "ENDFOLD")
+        if (fold_length > 0 && curr_fold.type == "ENDFOLD")
         {
             err = bblmAddFoldRange(&bblm_callbacks, curr_fold.start, fold_length);
             if (err)
