@@ -28,8 +28,6 @@ static OSErr initData()
     if (my_bundle != nil)
     {
         NSString* file_path = [my_bundle pathForResource:@"context-commands-en" ofType:@"txt"];
-        NSLog(@"### Initializing Command Data");
-        NSLog(@"### Using file: %@", file_path);
         NSCharacterSet *newline_char_set = [NSCharacterSet newlineCharacterSet];
         NSString* file_contents = [NSString stringWithContentsOfFile:file_path
                                                             encoding:NSUTF8StringEncoding
@@ -41,7 +39,6 @@ static OSErr initData()
     {
         if ([command isNotEqualTo: @""])
         {
-            NSLog(@"### Found command %@", command);
             [global_command_array addObject: command];
         }
     }
