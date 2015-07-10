@@ -45,7 +45,7 @@
 					<key>RunKind</key>
 					<string>com.barebones.bblm.keyword</string>
 					<key>KeywordFileName</key>
-					<string>context_keywords.txt</string>
+					<string>context-keywords.txt</string>
 				</dict>
 			</array>
 			<key>BBLMCommentLineDefault</key>
