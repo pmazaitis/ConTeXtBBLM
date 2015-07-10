@@ -15,7 +15,8 @@
 
 #include "syslog.h"
 
-#define MAX_PARAM_SIZE 256
+#define MAX_PARAM_SIZE 255
+#define MAX_RANK 4095
 
 using namespace std;
 
@@ -33,9 +34,9 @@ struct func_point_info
 struct fold_info
 {
     UInt32 start = 0;           // Start position of the fold
-    UInt32 line_number = 0;      // Line number where the fold starts
+    UInt32 line_number = 0;     // Line number where the fold starts
     string type = "";           // Command name of the fold
-    UInt32 depth = 0;           // Depth of this fold
+    int rank = 0;               // Rank of fold for error recovery
 };
 
 struct func_info
@@ -200,22 +201,6 @@ static bool getCommandNameAndType(BBLMTextIterator* iter, func_point_info* p, ve
     return(false);
 }
 
-//static bool getCommandType(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_id, int skip)
-//{
-//    // Skip requested characters to get to the relevant bit of the command
-//    for(int i=0; i < skip; i++)
-//    {
-//        if (skipChars(iter, p, 1)) return true;
-//    }
-//    // Collect Characters until we get to the end of the command
-//    while (isalnum(**iter) || **iter == '\\')
-//    {
-//        c_id->push_back(p->ch);
-//        if (skipChars(iter, p, 1)) return true;
-//    }
-//    return(false);
-//}
-
 static bool inParamBlock(BBLMTextIterator* iter, func_point_info* p, int param_char_count)
 {
     // If we hit the character limit, return true.
@@ -249,14 +234,33 @@ static bool inParamBlock(BBLMTextIterator* iter, func_point_info* p, int param_c
 static int getTypeRank(vector<string> valid_title_types, string curr_type)
 {
     // Get the ranks of the types in question
+    //
+    // Level in the ranking heirarchy above part:
+    //
+    // * component = 0
+    // * text = 1
+    //
+    // We want to pad our rankings for all of the heirarchical folds that might come above part
+    int RANK_PADDING = 2;
+    
+    if (curr_type == "component")
+    {
+        return 0;
+    }
+    
+    if (curr_type == "text")
+    {
+        return 1;
+    }
+    
     auto it_result = find(valid_title_types.begin(), valid_title_types.end(), curr_type);
     if (it_result == valid_title_types.end())
     {
-        return -1;
+        return MAX_RANK;
     }
     else
     {
-        return std::distance(valid_title_types.begin(), it_result);
+        return std::distance(valid_title_types.begin(), it_result) + RANK_PADDING;
     }
 }
 
@@ -328,7 +332,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     // General placeholder for fold_length calculations
     UInt32 fold_length = 0;    //
     // Keep track of fold depth, to error check for missing fold anchors
-    UInt32 curr_fold_depth =0;
+    //UInt32 curr_fold_depth =0;
     
     // Comment Block Fold Handling
     UInt32 comm_block_pos = 0;      // Start of possible comment block
@@ -583,11 +587,10 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 // Pull the command type into a vector
                 if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
                 // Set the values for the fold, and add it to the stack
-                curr_fold_depth +=1;
                 curr_fold.type.assign(curr_type.begin(), curr_type.end());
                 curr_fold.start += curr_fold.type.length() + TYPE_SKIP;
                 curr_fold.line_number = point.line_start;
-                curr_fold.depth = curr_fold_depth;
+                curr_fold.rank = MAX_RANK;
                 pend_folds.push(curr_fold);
             }
             // Need to move this into the command check
@@ -605,7 +608,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 if ( !pend_folds.empty())
                 {
-                    curr_fold_depth -=1;
                     curr_fold = pend_folds.top();
                     
                     if (curr_fold.type.compare(tt) == 0 )
@@ -669,27 +671,37 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 // Handle Folds
                 //
-                // We first want to check and see if we're seeing the same type; if we're
-                // starting a new section while still in a section we want to discard the
-                // top of the stack.
-                fold_info prev_fold = pend_folds.top();
+                // We first want to check and see if we're seeing a type of the same or higher rank; if we're
+                // starting a new parent we want to tie off the fold.
                 
-                if (cmd_type == prev_fold.type)
+                if (!pend_folds.empty())
                 {
-                    // We have a dup, and we want to pop the garbage fold value off of the pending fold stack.
-                    pend_folds.pop();
-                    // Log an error
-                    syslog(LOG_WARNING, "### ConTeXt Commented stop condition - throw away garbage fold");
-                    syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d, unmatched start command at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)prev_fold.line_number);
+                    fold_info prev_fold = pend_folds.top();
+                    if (getTypeRank(valid_title_types, cmd_type) <= prev_fold.rank)
+                    {
+                        // We've missed a close, and need to tie off the fold.
+                        fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
+                        if (fold_length > 0)
+                        {
+                            err = bblmAddFoldRange(&bblm_callbacks, prev_fold.start, fold_length);
+                            if (err)
+                            {
+                                return err;
+                            }
+                        }
+                        // Pop the garbage fold value off of the pending fold stack.
+                        pend_folds.pop();
+                        // Log an error
+                        syslog(LOG_WARNING, "### ConTeXt Commented stop condition - throw away garbage fold");
+                        syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d, unmatched start command at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)prev_fold.line_number);
+                    }
                 }
-                    
                 
                 // Then, set up info for the current fold
-                curr_fold_depth +=1;
                 curr_fold.type = cmd_type;
                 curr_fold.start = point.pos;
                 curr_fold.line_number = point.line_number;
-                curr_fold.depth = curr_fold_depth;
+                curr_fold.rank = getTypeRank(valid_title_types, cmd_type);
                 
                 if (cmd_name == "\\starttext" && point.line_number > 4 && show_fold)
                 {
@@ -826,75 +838,41 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 syslog(LOG_WARNING, "### Found stop command %s of type %s at line %d", cmd_name.c_str(), cmd_type.c_str(), (unsigned int)point.line_number);
                 
                 // Handle Folds
-                if (show_fold && !pend_folds.empty())
+                //
+                // Keep popping the stack until the rank of the prev_fold is greater than or equal to current stop
+                fold_info prev_fold;
+                if (!pend_folds.empty())
                 {
-                    pend_fold = pend_folds.top();
-                    if (pend_fold.type.compare(cmd_type) == 0 )
+                    prev_fold = pend_folds.top();
+                }
+                if (show_fold)
+                {
+                    while (getTypeRank(valid_title_types, cmd_type) <= prev_fold.rank && !pend_folds.empty())
                     {
-                        curr_fold_depth -=1;
-                        pend_folds.pop();
-                        fold_length = point.pos - pend_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
+                        // We've missed a close, and need to tie off the fold.
+                        fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
                         if (fold_length > 0)
                         {
-                            err = bblmAddFoldRange(&bblm_callbacks, pend_fold.start, fold_length);
+                            err = bblmAddFoldRange(&bblm_callbacks, prev_fold.start, fold_length);
                             if (err)
                             {
                                 return err;
                             }
                         }
+                        // Pop the garbage fold value off of the pending fold stack.
+                        pend_folds.pop();
+                        if (!pend_folds.empty())
+                        {
+                            prev_fold = pend_folds.top();
+                        }
+                        else
+                        {
+                            break;
+                        }
+                        // Log an error
+                        syslog(LOG_WARNING, "### ConTeXt Commented stop condition - throw away garbage fold");
+                        syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d, unmatched start command at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)prev_fold.line_number);
                     }
-                    else
-                    {
-                        syslog(LOG_WARNING, "### ConTeXt Commented start condition");
-                        syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d", cmd_name.c_str(), (unsigned int)point.line_number);
-                    }
-//                    {
-//                        int curr_rank = 0;
-//                        int pend_rank = 0;
-//                        
-//                        // Get the ranks of the types in question
-//                        auto it_result = find(valid_title_types.begin(), valid_title_types.end(), cmd_type);
-//                        if (it_result == valid_title_types.end())
-//                        {
-//                            // Error
-//                        }
-//                        else
-//                        {
-//                            curr_rank = std::distance(valid_title_types.begin(), it_result);
-//                        }
-//                        it_result = find(valid_title_types.begin(), valid_title_types.end(), pend_fold.type);
-//                        if (it_result == valid_title_types.end())
-//                        {
-//                            // Error
-//                        }
-//                        else
-//                        {
-//                            pend_rank = std::distance(valid_title_types.begin(), it_result);
-//                        }
-//                        syslog(LOG_WARNING, "### WARNING: Unmatched fold %s at line %d", cmd_type.c_str(), (unsigned int)point.line_number);
-//                        syslog(LOG_WARNING, "### WARNING: Pending type %s with rank %d", pend_fold.type.c_str(), (unsigned int)pend_rank);
-//                        syslog(LOG_WARNING, "### WARNING: Current type %s with rank %d", cmd_type.c_str(), (unsigned int)curr_rank);
-//                     
-////                        syslog(LOG_WARNING, "### WARNING: Unmatched fold %s at line %d", cmd_type.c_str(), (unsigned int)point.line_number);
-////                        syslog(LOG_WARNING, "### WARNING: Pending type %s with depth %d", pend_fold.type.c_str(), (unsigned int)pend_fold.depth);
-////                        syslog(LOG_WARNING, "### WARNING: Current type %s with depth %d", cmd_type.c_str(), (unsigned int)curr_fold_depth);
-//                        
-//                        if (curr_rank > pend_rank)
-//                        {
-//                            // With the current rank greater than the pending rank, we missed an opening command somewhere;
-//                            // Discard current operation, leave the stack alone and report an error.
-//                            syslog(LOG_WARNING, "### ConTeXt Commented start condition");
-//                            syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d", cmd_name.c_str(), (unsigned int)point.line_number);
-//                        }
-//                        else
-//                        {
-//                            // Otherwise, we have a garbage fold start value on the stack; pop it, and report an error
-//                            curr_fold_depth -= 1;
-//                            pend_folds.pop();
-//                            syslog(LOG_WARNING, "### ConTeXt Commented stop condition - throw away garbage fold");
-//                            syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d, possible match at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)pend_fold.line_number);
-//                        }
-//                    }
                 } // End fold handling
                 
                 // handle /stoptext fold
