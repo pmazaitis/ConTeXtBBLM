@@ -1,5 +1,0 @@
-\startchapter
-\startsection
-\stopchapter
-\stopsection
-\MINUTE
