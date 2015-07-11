@@ -231,52 +231,63 @@ static bool inParamBlock(BBLMTextIterator* iter, func_point_info* p, int param_c
     return true;
 }
 
-static int getTypeRank(vector<string> valid_title_types, string curr_type)
+static int getTypeRank(string str_type)
 {
-    // Get the ranks of the types in question
-    //
-    // Level in the ranking heirarchy above part:
-    //
-    // * component = 0
-    // * text = 1
-    //
-    // We want to pad our rankings for all of the heirarchical folds that might come above part
-    int RANK_PADDING = 2;
+    NSString *curr_type = [NSString stringWithUTF8String:str_type.c_str()];
     
-    if (curr_type == "component")
-    {
-        return 0;
-    }
-    
-    if (curr_type == "text")
-    {
-        return 1;
-    }
-    
+    NSDictionary * type_ranks = [[NSDictionary alloc] initWithObjectsAndKeys:
+                                 [NSNumber numberWithInt:0], @"component",
+                                 [NSNumber numberWithInt:1], @"text",
+                                 [NSNumber numberWithInt:2], @"part",
+                                 [NSNumber numberWithInt:2], @"frontmatter",
+                                 [NSNumber numberWithInt:2], @"bodymatter",
+                                 [NSNumber numberWithInt:2], @"backmatter",
+                                 [NSNumber numberWithInt:2], @"appendices",
+                                 [NSNumber numberWithInt:3], @"chapter",
+                                 [NSNumber numberWithInt:3], @"title",
+                                 [NSNumber numberWithInt:4], @"section",
+                                 [NSNumber numberWithInt:4], @"subject",
+                                 [NSNumber numberWithInt:5], @"subsection",
+                                 [NSNumber numberWithInt:5], @"subsubject",
+                                 [NSNumber numberWithInt:6], @"subsubsection",
+                                 [NSNumber numberWithInt:6], @"subsubsubject",
+                                 [NSNumber numberWithInt:7], @"subsubsubsection",
+                                 [NSNumber numberWithInt:7], @"subsubsubsubject",
+                                 [NSNumber numberWithInt:8], @"subsubsubsubsection",
+                                 [NSNumber numberWithInt:8], @"subsubsubsubsubject",
+                                 nil];
+
     // And set special ranking values for heirarchy in the TABLE environment
-    if (curr_type == "TABLE")
+
+    if (str_type == "")
+    {
+        return 1000;
+    }
+    
+    if (str_type == "TABLE")
     {
         return MAX_RANK - 2;
     }
     
-    if (curr_type == "TR")
+    if (str_type == "TR")
     {
         return MAX_RANK - 1;
     }
     
-    auto it_result = find(valid_title_types.begin(), valid_title_types.end(), curr_type);
-    if (it_result == valid_title_types.end())
+    if([[type_ranks allKeys] containsObject:curr_type])
     {
-        return MAX_RANK;
+        int curr_rank = [[type_ranks objectForKey:curr_type] intValue];
+        return curr_rank;
     }
     else
     {
-        return std::distance(valid_title_types.begin(), it_result) + RANK_PADDING;
+        return MAX_RANK;
     }
+
 }
 
 OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks)
-{
+{    
     //
     // # Description
     //
@@ -349,17 +360,19 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     // TODO: use a block in the Info.plist to supply these values.
     vector<string> valid_title_types = {    "part",
                                             "chapter",
-                                            "section",
-                                            "subsection",
-                                            "subsubsection",
-                                            "subsubsubsection",
-                                            "subsubsubsubsection",
                                             "title",
+                                            "section",
                                             "subject",
+                                            "subsection",
                                             "subsubject",
+                                            "subsubsection",
                                             "subsubsubject",
+                                            "subsubsubsection",
                                             "subsubsubsubject",
+                                            "subsubsubsubsection",
                                             "subsubsubsubsubject"};
+    
+
     
     iter += point.pos; // TODO: do we ever want to get this value from the params block?
     
@@ -682,7 +695,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 if (!pend_folds.empty())
                 {
                     fold_info prev_fold = pend_folds.top();
-                    if (getTypeRank(valid_title_types, cmd_type) <= prev_fold.rank)
+                    if (getTypeRank(cmd_type) <= prev_fold.rank)
                     {
                         // We've missed a close, and need to tie off the fold.
                         fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
@@ -705,7 +718,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 curr_fold.type = cmd_type;
                 curr_fold.start = point.pos;
                 curr_fold.line_number = point.line_number;
-                curr_fold.rank = getTypeRank(valid_title_types, cmd_type);
+                curr_fold.rank = getTypeRank(cmd_type);
                 
                 if (cmd_name == "\\starttext" && point.line_number > 4 && show_fold)
                 {
@@ -849,7 +862,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
                 if (show_fold)
                 {
-                    while (getTypeRank(valid_title_types, cmd_type) <= prev_fold.rank && !pend_folds.empty())
+                    while (getTypeRank(cmd_type) <= prev_fold.rank && !pend_folds.empty())
                     {
                         // We've missed a close, and need to tie off the fold.
                         fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
@@ -871,8 +884,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                         {
                             break;
                         }
-                        // Log an error
-                        syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d, unmatched start command at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)prev_fold.line_number);
                     }
                 } // End fold handling
                 
