@@ -253,6 +253,17 @@ static int getTypeRank(vector<string> valid_title_types, string curr_type)
         return 1;
     }
     
+    // And set special ranking values for heirarchy in the TABLE environment
+    if (curr_type == "TABLE")
+    {
+        return MAX_RANK - 2;
+    }
+    
+    if (curr_type == "TR")
+    {
+        return MAX_RANK - 1;
+    }
+    
     auto it_result = find(valid_title_types.begin(), valid_title_types.end(), curr_type);
     if (it_result == valid_title_types.end())
     {
