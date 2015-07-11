@@ -7,6 +7,9 @@
 //
 //  See https://github.com/pmazaitis/ConTeXtBBLM
 
+//
+// TODO: special case naked /start nad /stop commands - supress folding in these cases.
+
 #include <string>
 #include <stack>
 #include <vector>
@@ -258,12 +261,6 @@ static int getTypeRank(string str_type)
                                  nil];
 
     // And set special ranking values for heirarchy in the TABLE environment
-
-    if (str_type == "")
-    {
-        return 1000;
-    }
-    
     if (str_type == "TABLE")
     {
         return MAX_RANK - 2;
@@ -676,8 +673,10 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 // Track initial state
                 if (point.in_comment) {show_fold = false;}
                 if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
+                
                 cmd_name.assign(curr_name.begin(), curr_name.end());
                 cmd_type.assign(curr_type.begin(), curr_type.end());
+                if (cmd_name == "\\start") {show_fold = false;}
                 bool is_known_type = (find(valid_title_types.begin(), valid_title_types.end(), cmd_type) != valid_title_types.end());
 
                 // Set up info stanza as far as we can
@@ -850,6 +849,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
                 cmd_name.assign(curr_name.begin(), curr_name.end());
                 cmd_type.assign(curr_type.begin(), curr_type.end());
+                if (cmd_name == "\\stop") {show_fold = false;}
                 bool is_known_type = (find(valid_title_types.begin(), valid_title_types.end(), cmd_type) != valid_title_types.end());
                 
                 // Handle Folds
