@@ -316,10 +316,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     //   structure four levels deeper than _part_ for the functions list.
     // * Only supports mkiv style sectioning
     // * Will only find user-specified heads that are set up before use.
-    //
-    // TODO: handle component pairs
-    
-    NSLog(@"###### Starting function scan.");
     
     BBLMTextIterator iter(params);  // Iterator as supplied by calling code
     OSErr  result = noErr;          // Return check
@@ -678,8 +674,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 info.fKind = kBBLMFunctionMark;
                 info.fFlags = 0;
                 
-                syslog(LOG_WARNING, "### Found start command %s of type %s at line %d", cmd_name.c_str(), cmd_type.c_str(), (unsigned int)point.line_number);
-                
                 // Handle Folds
                 //
                 // We first want to check and see if we're seeing a type of the same or higher rank; if we're
@@ -703,8 +697,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                         // Pop the garbage fold value off of the pending fold stack.
                         pend_folds.pop();
                         // Log an error
-                        syslog(LOG_WARNING, "### ConTeXt Commented stop condition - throw away garbage fold");
-                        syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d, unmatched start command at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)prev_fold.line_number);
+                        syslog(LOG_WARNING, "ConTeXt BBLM Warning: Problem fold %s at line %d, unmatched start command at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)prev_fold.line_number);
                     }
                 }
                 
@@ -846,8 +839,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 cmd_type.assign(curr_type.begin(), curr_type.end());
                 bool is_known_type = (find(valid_title_types.begin(), valid_title_types.end(), cmd_type) != valid_title_types.end());
                 
-                syslog(LOG_WARNING, "### Found stop command %s of type %s at line %d", cmd_name.c_str(), cmd_type.c_str(), (unsigned int)point.line_number);
-                
                 // Handle Folds
                 //
                 // Keep popping the stack until the rank of the prev_fold is greater than or equal to current stop
@@ -881,7 +872,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                             break;
                         }
                         // Log an error
-                        syslog(LOG_WARNING, "### ConTeXt Commented stop condition - throw away garbage fold");
                         syslog(LOG_WARNING, "### ConTeXt BBLM Warning: Unmatched fold %s at line %d, unmatched start command at line %d.", cmd_name.c_str(), (unsigned int)point.line_number, (unsigned int)prev_fold.line_number);
                     }
                 } // End fold handling
