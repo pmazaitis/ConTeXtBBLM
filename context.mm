@@ -359,7 +359,6 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
         case kBBLMSetCategoriesForTextCompletionMessage:
         {
             SInt8*	cat = params.fCategoryParams.fCategoryTable;
-            
             cat[(unsigned char)'\\'] = '<';
             break;
         }
