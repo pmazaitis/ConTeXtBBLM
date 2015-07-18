@@ -253,7 +253,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
             candidate = [NSString stringWithFormat:@"%@.tex", fileFullPath];
         }
         
-        // Sanity check this; don't clobber existing files
+        // Don't clobber existing files
         if (![fileManager fileExistsAtPath: candidate])
         {
             [fileManager createFileAtPath:candidate contents:nil attributes:nil];
