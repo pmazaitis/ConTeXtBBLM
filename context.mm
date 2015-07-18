@@ -177,8 +177,7 @@ static void isRunSpellable(BBLMParamBlock &params)
 static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
 {
     NSError *err;
-    NSFileManager* fileManager = [NSFileManager defaultManager];
-    bool not_found = true;
+    bool candidate_found = false;
     
     // Extensions we want to look for
     NSArray *valid_extensions = @[@"tex",
@@ -186,81 +185,97 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
                                   @"mkvi"];
 
     // Get URL and filename
+    //
+    // requestor:           full URL of the file requesting the include
+    // fileName:            string of the (likely truncated) file name from the include directive
+    // fileFullPath:        string of full path to file for creation if we can't find it
+    // parentURL:           parent URL of requestor to initiate search
+    //
     NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
-    NSString *doc_name = (__bridge NSString *)io_params.fInIncludeFileString;
+    NSString *fileName = (__bridge NSString *)io_params.fInIncludeFileString;
+    NSString *fileFullPath = [[NSString alloc] initWithString:[[[requestor  URLByDeletingLastPathComponent] URLByAppendingPathComponent:fileName] path]];
+    NSURL *parentURL = [[requestor
+                          URLByDeletingLastPathComponent]
+                         URLByDeletingLastPathComponent
+                         ];
     
-    NSString *doc_dir_string = [[requestor absoluteString] stringByDeletingLastPathComponent];
-    
-    NSURL *doc_dir = [NSURL URLWithString: doc_dir_string];
-    // The explicit argument to the \environment command - may be valid
-    NSURL *candidate_name;
-    
-    // Directories we want to search
-    //
-    // At the moment, this does upward path searching to /Users (or /)
-    // Other places we could seed this from:
-    // * texmf tree
-    // * user environment variables
-    //
-    NSMutableArray *search_paths = [[NSMutableArray alloc] init];
-    NSString *curr_dir = doc_dir_string;
-    
-    while ( [curr_dir isNotEqualTo:@"file:/"] && [curr_dir isNotEqualTo:@"file:/Users"])
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSDirectoryEnumerator *fileEnumerator = [fileManager enumeratorAtURL:parentURL
+                                             includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
+                                            options:NSDirectoryEnumerationSkipsHiddenFiles
+                                            errorHandler:^BOOL(NSURL *url, NSError *error)
     {
-        [search_paths addObject: curr_dir];
-        curr_dir = [curr_dir stringByDeletingLastPathComponent];
-    }
-    
-    // In each directory...
-    for (id curr_path in search_paths)
-    {
-        NSURL *curr_url = [NSURL URLWithString:curr_path];
-        candidate_name = [curr_url URLByAppendingPathComponent:doc_name];
-        
-        // Test if file exists as is
-        if ([candidate_name checkResourceIsReachableAndReturnError:&err] == YES)
-        {
-            NSString* found_file = [candidate_name path];
-            io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: found_file] retain];
-            return;
+        if (error) {
+            NSLog(@"[Error] %@ (%@)", error, url);
+            return NO;
         }
         
-        NSURL *candidate;
-        
-        for (id extension in valid_extensions)
+        return YES;
+    }];
+    
+    for (NSURL *currURL in fileEnumerator)
+    {
+        // Loop through the items in the iterator; for each item that is a directory,
+        // check if any candidates (filename + a valid extension) exist.
+        NSNumber *isDirectory;
+        [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
+        // Only check if we have a directory
+        if ([isDirectory isEqualToNumber:@1])
         {
-            candidate = [candidate_name URLByAppendingPathExtension:extension];
-            
-            if ([candidate checkResourceIsReachableAndReturnError:&err] == YES)
+            NSString *currFilePath = [currURL absoluteString];
+            for (id extension in valid_extensions)
             {
-                NSString* found_file = [candidate path];
-                io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: found_file] retain];
-                return;
+                NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
+                NSURL *candidateURL = [NSURL URLWithString:candidate];
+                if ([candidateURL checkResourceIsReachableAndReturnError:&err] == YES)
+                {
+                    candidate_found = YES;
+                    io_params.fOutIncludedItemURL = (CFURLRef) [candidateURL retain];
+                    return;
+                }
             }
         }
+        if (candidate_found) {break;}
     }
     
     // We couldn't find the file, so create the file in the same dir as the source file
-    if (not_found)
+    if (!candidate_found)
     {
-        candidate_name = [doc_dir URLByAppendingPathComponent:doc_name];
         
-        // (We should never need this test, but: being safe, here)
-        if ([candidate_name checkResourceIsReachableAndReturnError:&err] == NO )
+        NSString *candidate;
+        bool has_valid_extension = false;
+        
+        for (id extension in valid_extensions)
         {
-            NSURL *creation_URL = [candidate_name URLByAppendingPathExtension:@"tex"];
-            NSString* create_file = [creation_URL path];
-            [fileManager createFileAtPath:create_file contents:nil attributes:nil];
-
-            // Send the new file name to be displayed in the menu
-            
-            if ([fileManager fileExistsAtPath: create_file]) {
-                io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: create_file] retain];
+            if ([[fileFullPath pathExtension] isEqualToString:extension])
+            {
+                has_valid_extension = true;
             }
         }
+        
+        if (has_valid_extension)
+        {
+            candidate = fileFullPath;
+        }
+        else
+        {
+            candidate = [NSString stringWithFormat:@"%@.tex", fileFullPath];
+        }
+        
+        // Sanity check this; don't clobber existing files
+        if (![fileManager fileExistsAtPath: candidate])
+        {
+            [fileManager createFileAtPath:candidate contents:nil attributes:nil];
+        }
+        
+        // Send the new file name to be displayed in the menu
+        
+        if ([fileManager fileExistsAtPath: candidate])
+        {
+            io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: candidate] retain];
+        }
+        
     }
-    [search_paths release];
-    search_paths = nil;
 }
 
 #pragma mark - Entry Point
