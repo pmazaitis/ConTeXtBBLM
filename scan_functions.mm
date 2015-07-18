@@ -514,7 +514,11 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
         // Test for commands
         if (point.ch == '\\') // Found the start character of a ConTeXt command.
         {
-            if (iter.stricmp("\\environment") == 0) // Populate the includes pop-up with environment files
+            if (iter.stricmp("\\environment") == 0 ||
+                iter.stricmp("\\project") == 0 ||
+                iter.stricmp("\\product") == 0 ||
+                iter.stricmp("\\component") == 0
+                )
             {
                 UInt32 func_start = point.pos;
                 UInt32 func_stop = 0;
@@ -523,7 +527,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 BBLMProcInfo info;
                 OSErr err;
                 
-                vector<UniChar> curr_environment;
+                vector<UniChar> curr_include;
                 
                 if (skipToWhiteSpace(&iter, &point)) break;
                 if (skipWhiteSpace(&iter, &point)) break;
@@ -532,7 +536,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 while (!isspace(*iter)) {
                     // Collect characters in the referenced file until we get to whitespace
-                    curr_environment.push_back(point.ch);
+                    curr_include.push_back(point.ch);
                     if (skipChars(&iter, &point, 1)) break;
                 }
                 
@@ -540,7 +544,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 func_name_stop = point.pos;
                 
                 // ident is the first Unichar of curr_environment
-                UniChar *ident = &curr_environment[0];
+                UniChar *ident = &curr_include[0];
                 
                 UInt32 offset = 0;
                 
