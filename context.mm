@@ -45,18 +45,12 @@ static OSErr initData()
     return (result);
 }
 
-
-
-
 // Clean up global data structures
 static void disposeData()
 {
     [global_command_array release];
     global_command_array = nil;
 }
-
-
-
 
 #pragma mark - Completion
 
@@ -86,11 +80,8 @@ static void createTextCompletionArray(BBLMParamBlock &params)
         [kBBLMCommandRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind]||
         [kBBLMParameterRunKind isEqualToString: completionParams.fInCompletionRangeStartRun.runKind])
     {
-        //	no change
         NSMutableArray* completionArray = [[NSMutableArray alloc] init];
-
         AddSymbols((NSString*) completionParams.fInPartialSymbol, completionArray);
-        
         completionParams.fOutSymbolCompletionArray = (CFArrayRef) completionArray;
         completionParams.fOutPreferredCompletionIndex = 0;
     }
