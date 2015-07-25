@@ -514,10 +514,32 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
         // Test for commands
         if (point.ch == '\\') // Found the start character of a ConTeXt command.
         {
-            if (iter.stricmp("\\environment") == 0 ||
-                iter.stricmp("\\project") == 0 ||
-                iter.stricmp("\\product") == 0 ||
-                iter.stricmp("\\component") == 0
+            // We want to test for any of the product commands:
+            // * \environment
+            // * \project
+            // * \product
+            // * \component
+            //
+            // ...as well as any of the straight inclusion commands:
+            // * \input         (explict filename)
+            // * \ReadFile      (PathSearch, noop for missing file)
+            // * \readfile      (PathSearch)
+            // * \readlocfile   (current path)
+            // * \readsysfile   (current path, obeys tex search)
+            // * \readfixfile   (specified path, backtracking)
+
+            
+            
+            if (iter.stricmp("\\environment ") == 0 ||
+                iter.stricmp("\\project ") == 0 ||
+                iter.stricmp("\\product ") == 0 ||
+                iter.stricmp("\\component ") == 0 ||
+                iter.stricmp("\\input ") == 0 ||
+                iter.stricmp("\\ReadFile ") == 0 ||
+                iter.stricmp("\\readfile ") == 0 ||
+                iter.stricmp("\\readlocfile ") == 0 ||
+                iter.stricmp("\\readsysfile ") == 0 ||
+                iter.stricmp("\\readfixfile ") == 0 
                 )
             {
                 UInt32 func_start = point.pos;
@@ -549,8 +571,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 UInt32 offset = 0;
                 
                 UInt32 func_name_length = func_name_stop - func_name_start;
-                
-                //addFunction(
                 
                 // Set up the token
                 err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_name_length, &offset);

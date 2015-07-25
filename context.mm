@@ -10,6 +10,9 @@
 
 #include "context.h"
 #include <string>
+//
+//#import <Cocoa/Cocoa.h>
+
 
 #pragma mark - Globals
 
@@ -228,6 +231,16 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         }
         if (candidate_found) {break;}
     }
+    
+    // Messing about with UI
+//    NSAlert *alert = [[NSAlert alloc] init];
+//    [alert addButtonWithTitle:@"Create File"];
+//    [alert addButtonWithTitle:@"Cancel"];
+//    [alert setMessageText:@"Do you want to create the file?"];
+//    [alert setInformativeText:@"BBEdit was unable to locate the referenced file."];
+//    [alert setAlertStyle:NSWarningAlertStyle];
+    
+    
     
     // We couldn't find the file, so create the file in the same dir as the source file
     if (!candidate_found)
