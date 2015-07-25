@@ -125,43 +125,43 @@ static bool skipWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
     return(false);
 }
 
-static bool skipToWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
-{
-    while (!isspace(p->ch))
-    {
-        p->prev = p->ch;
-        (*iter)++;
-        (p->pos)++;
-        
-        if (iter->InBounds())
-        {
-            p->ch = **iter;
-        }
-        else
-        {
-            return(true);
-        }
-        
-        // Do we have a new line?
-        if (p->prev == '\r')
-        {
-            p->prev_start = p->line_start;
-            p->line_start = (p->pos);
-            p->line_number += 1;
-        }
-        
-        // Are we in a comment?
-        if (p->ch == '%' && p->prev != '\\')
-        {
-            p->in_comment = true;
-        }
-        if (p->in_comment && p->ch == '\r')
-        {
-            p->in_comment = false;
-        }
-    }
-    return(false);
-}
+//static bool skipToWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
+//{
+//    while (!isspace(p->ch))
+//    {
+//        p->prev = p->ch;
+//        (*iter)++;
+//        (p->pos)++;
+//        
+//        if (iter->InBounds())
+//        {
+//            p->ch = **iter;
+//        }
+//        else
+//        {
+//            return(true);
+//        }
+//        
+//        // Do we have a new line?
+//        if (p->prev == '\r')
+//        {
+//            p->prev_start = p->line_start;
+//            p->line_start = (p->pos);
+//            p->line_number += 1;
+//        }
+//        
+//        // Are we in a comment?
+//        if (p->ch == '%' && p->prev != '\\')
+//        {
+//            p->in_comment = true;
+//        }
+//        if (p->in_comment && p->ch == '\r')
+//        {
+//            p->in_comment = false;
+//        }
+//    }
+//    return(false);
+//}
 
 static bool rollBack(BBLMTextIterator* iter, func_point_info* p)
 {
@@ -370,6 +370,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                                             "subsubsubsubsubject"};
     
 
+
     
     iter += point.pos; // TODO: do we ever want to get this value from the params block?
     
@@ -530,16 +531,10 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
 
             
             
-            if (iter.stricmp("\\environment ") == 0 ||
-                iter.stricmp("\\project ") == 0 ||
-                iter.stricmp("\\product ") == 0 ||
-                iter.stricmp("\\component ") == 0 ||
-                iter.stricmp("\\input ") == 0 ||
-                iter.stricmp("\\ReadFile ") == 0 ||
-                iter.stricmp("\\readfile ") == 0 ||
-                iter.stricmp("\\readlocfile ") == 0 ||
-                iter.stricmp("\\readsysfile ") == 0 ||
-                iter.stricmp("\\readfixfile ") == 0 
+            if (iter.strcmp("\\environment") == 0 ||
+                iter.strcmp("\\project") == 0 ||
+                iter.strcmp("\\product") == 0 ||
+                iter.strcmp("\\component") == 0
                 )
             {
                 UInt32 func_start = point.pos;
@@ -548,54 +543,157 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 UInt32 func_name_stop = 0;
                 BBLMProcInfo info;
                 OSErr err;
+                UInt32 TYPE_SKIP = 0;
                 
+                
+                vector<UniChar> curr_name;    // Name of current command
+                vector<UniChar> curr_type;    // Type of current command
                 vector<UniChar> curr_include;
                 
-                if (skipToWhiteSpace(&iter, &point)) break;
+                if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
                 if (skipWhiteSpace(&iter, &point)) break;
                 
-                func_name_start = point.pos;
+                string cmd_name;
+                cmd_name.assign(curr_name.begin(), curr_name.end());
                 
-                while (!isspace(*iter)) {
-                    // Collect characters in the referenced file until we get to whitespace
-                    curr_include.push_back(point.ch);
+                if (cmd_name == "\\environment" ||
+                    cmd_name == "\\project" ||
+                    cmd_name == "\\product" ||
+                    cmd_name == "\\component")
+                {
+                    func_name_start = point.pos;
+                    
+                    while (!isspace(*iter)) {
+                        // Collect characters in the referenced file until we get to whitespace
+                        curr_include.push_back(point.ch);
+                        if (skipChars(&iter, &point, 1)) break;
+                    }
+                    
+                    func_stop = point.pos;
+                    func_name_stop = point.pos;
+                    
+                    // ident is the first Unichar of curr_include
+                    UniChar *ident = &curr_include[0];
+                    
+                    UInt32 offset = 0;
+                    
+                    UInt32 func_name_length = func_name_stop - func_name_start;
+                    
+                    // Set up the token
+                    err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_name_length, &offset);
+                    if (err)
+                    {
+                        return err;
+                    }
+                    
+                    // Set up the info stanza
+                    info.fFunctionStart = func_start;
+                    info.fFunctionEnd = func_stop;
+                    info.fSelStart = func_start;
+                    info.fSelEnd = func_stop;
+                    info.fFirstChar = func_start;
+                    info.fKind = kBBLMInclude;
+                    info.fIndentLevel = 0;
+                    info.fFlags = 0;
+                    info.fNameStart = offset;
+                    info.fNameLength = func_name_length;
+                    
+                    UInt32 func_index = 0;
+                    err = bblmAddFunctionToList(&bblm_callbacks, params.fFcnParams.fFcnList,info, &func_index);
+                    if (err)
+                    {
+                        return err;
+                    }
+                }
+            }
+            
+            if (iter.strcmp("\\input") == 0 ||
+                iter.strcmp("\\ReadFile") == 0 ||
+                iter.strcmp("\\readfile") == 0 ||
+                iter.strcmp("\\readlocfile") == 0 ||
+                iter.strcmp("\\readsysfile") == 0 ||
+                iter.strcmp("\\readfixfile") == 0
+                )
+            {
+                UInt32 func_start = point.pos;
+                UInt32 func_stop = 0;
+                UInt32 func_name_start = 0;
+                UInt32 func_name_stop = 0;
+                BBLMProcInfo info;
+                OSErr err;
+                UInt32 TYPE_SKIP = 0;
+                
+                vector<UniChar> curr_name;    // Name of current command
+                vector<UniChar> curr_type;    // Type of current command
+                vector<UniChar> curr_include;
+                
+                if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
+         
+                string cmd_name;
+                cmd_name.assign(curr_name.begin(), curr_name.end());
+                
+                if (cmd_name == "\\input" ||
+                    cmd_name == "\\ReadFile" ||
+                    cmd_name == "\\readfile" ||
+                    cmd_name == "\\readlocfile" ||
+                    cmd_name == "\\readsysfile" ||
+                    cmd_name == "\\readfixfile"
+                    )
+                {
+                    // Find the start of the brackets
+                    while (point.ch != '{' && point.ch != '\r')
+                    {
+                        if (skipChars(&iter, &point, 1)) break;
+                    }
+                    
+                    // Eat the {
                     if (skipChars(&iter, &point, 1)) break;
-                }
-                
-                func_stop = point.pos;
-                func_name_stop = point.pos;
-                
-                // ident is the first Unichar of curr_environment
-                UniChar *ident = &curr_include[0];
-                
-                UInt32 offset = 0;
-                
-                UInt32 func_name_length = func_name_stop - func_name_start;
-                
-                // Set up the token
-                err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_name_length, &offset);
-                if (err)
-                {
-                    return err;
-                }
-                
-                // Set up the info stanza
-                info.fFunctionStart = func_start;
-                info.fFunctionEnd = func_stop;
-                info.fSelStart = func_start;
-                info.fSelEnd = func_stop;
-                info.fFirstChar = func_start;
-                info.fKind = kBBLMInclude;
-                info.fIndentLevel = 0;
-                info.fFlags = 0;
-                info.fNameStart = offset;
-                info.fNameLength = func_name_length;
-                
-                UInt32 func_index = 0;
-                err = bblmAddFunctionToList(&bblm_callbacks, params.fFcnParams.fFcnList,info, &func_index);
-                if (err)
-                {
-                    return err;
+                    
+                    func_name_start = point.pos;
+                    
+                    int param_char_count = 0;
+                    // Find the end of the brackets
+                    while (inParamBlock(&iter, &point, param_char_count) && point.ch != '}') {
+                        // Collect characters in the referenced file until we get to whitespace
+                        curr_include.push_back(point.ch);
+                        if (skipChars(&iter, &point, 1)) break;
+                    }
+                    
+                    func_stop = point.pos;
+                    func_name_stop = point.pos;
+                    
+                    // ident is the first Unichar of curr_environment
+                    UniChar *ident = &curr_include[0];
+                    
+                    UInt32 offset = 0;
+                    
+                    UInt32 func_name_length = func_name_stop - func_name_start;
+                    
+                    // Set up the token
+                    err = bblmAddTokenToBuffer(&bblm_callbacks, params.fFcnParams.fTokenBuffer, ident, func_name_length, &offset);
+                    if (err)
+                    {
+                        return err;
+                    }
+                    
+                    // Set up the info stanza
+                    info.fFunctionStart = func_start;
+                    info.fFunctionEnd = func_stop;
+                    info.fSelStart = func_start;
+                    info.fSelEnd = func_stop;
+                    info.fFirstChar = func_start;
+                    info.fKind = kBBLMInclude;
+                    info.fIndentLevel = 0;
+                    info.fFlags = 0;
+                    info.fNameStart = offset;
+                    info.fNameLength = func_name_length;
+                    
+                    UInt32 func_index = 0;
+                    err = bblmAddFunctionToList(&bblm_callbacks, params.fFcnParams.fFcnList,info, &func_index);
+                    if (err)
+                    {
+                        return err;
+                    }
                 }
             }
             if (iter.stricmp("\\definehead") == 0) // We have a new head definition
@@ -616,7 +714,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
                 valid_title_types.push_back(new_head_definition); // Add our new definition to the list of valid heads
             }
-            // Need to move this into the command check
             if (!point.in_comment && (iter.strcmp("\\bTABLE") == 0 || iter.strcmp("\\bTR") == 0))
             {
                 vector<UniChar> curr_name;    // Name of current command
@@ -634,7 +731,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 curr_fold.rank = MAX_RANK;
                 pend_folds.push(curr_fold);
             }
-            // Need to move this into the command check
             if (!point.in_comment && (iter.strcmp("\\eTABLE") == 0 || iter.strcmp("\\eTR") == 0))
             {
                 OSErr err;                  // Return check
