@@ -172,12 +172,66 @@ static void isRunSpellable(BBLMParamBlock &params)
     }
 }
 
+static NSURL* findIncludeFile(bblmResolveIncludeParams& io_params, NSURL* rootDir, NSString* fileName)
+{
+    NSArray *valid_extensions = @[@"tex",
+                                  @"mkiv",
+                                  @"mkvi"];
+    bool candidate_found = false;
+    NSURL* returnURL = nil;
+    
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSDirectoryEnumerator *fileEnumerator = [fileManager enumeratorAtURL:rootDir
+                                              includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
+                                                                 options:NSDirectoryEnumerationSkipsHiddenFiles
+                                                            errorHandler:^BOOL(NSURL *url, NSError *error)
+                                             {
+                                                 if (error)
+                                                 {
+                                                     NSLog(@"[Error] %@ (%@)", error, url);
+                                                     return NO;
+                                                 }
+                                                 
+                                                 return YES;
+                                             }];
+
+    // Look for requested file in parent directory and below
+
+    for (NSURL *currURL in fileEnumerator)
+    {
+        // Loop through the items in the iterator; for each item that is a directory,
+        // check if any candidates (filename + a valid extension) exist.
+        NSNumber *isDirectory;
+        [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
+        // Only check files
+        if ([isDirectory isEqualToNumber:@0])
+        {
+            NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
+            NSString *currFile = [currURL absoluteString];
+            //NSLog(@"### Checking for Match with %@",currFilePath);
+            for (id extension in valid_extensions)
+            {
+                NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
+                NSURL *candidateURL = [NSURL URLWithString:candidate];
+                if ([candidate isEqualTo:currFile])
+                {
+                    candidate_found = true;
+                    returnURL = candidateURL;
+                }
+            }
+        }
+        if (candidate_found) {break;}
+    }
+    return returnURL;
+}
+
+
 static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
 {
     // TODO: fix this to stat files, not dirs
-    NSError *err;
+    //NSError *err;
     bool candidate_found = false;
-    
+    // TODO: use this to capture candidate files: NSURL foundURL = nil;
     // Extensions we want to look for
     NSArray *valid_extensions = @[@"tex",
                                   @"mkiv",
@@ -217,7 +271,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         // check if any candidates (filename + a valid extension) exist.
         NSNumber *isDirectory;
         [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
-        // Only check if we have a directory
+        // Don't check directories
         if ([isDirectory isEqualToNumber:@0])
         {
             NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
@@ -295,15 +349,17 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
             // check if any candidates (filename + a valid extension) exist.
             NSNumber *isDirectory;
             [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
-            // Only check if we have a directory
-            if ([isDirectory isEqualToNumber:@1])
+            // Don't check directories
+            if ([isDirectory isEqualToNumber:@0])
             {
-                NSString *currFilePath = [currURL absoluteString];
+                NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
+                NSString *currFile = [currURL absoluteString];
+                //NSLog(@"### Checking for Match with %@",currFilePath);
                 for (id extension in valid_extensions)
                 {
                     NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
                     NSURL *candidateURL = [NSURL URLWithString:candidate];
-                    if ([candidateURL checkResourceIsReachableAndReturnError:&err] == YES)
+                    if ([candidate isEqualTo:currFile])
                     {
                         candidate_found = YES;
                         io_params.fOutIncludedItemURL = (CFURLRef) [candidateURL retain];
@@ -313,6 +369,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
             }
             if (candidate_found) {break;}
         }
+
     }
     
     // We couldn't find the file, so see if we want to create it
@@ -345,37 +402,6 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
                 [fileManager createFileAtPath:[panel.URL absoluteString] contents:nil attributes:nil];
                 io_params.fOutIncludedItemURL = (CFURLRef) [panel.URL retain];
             }
-        
-            
-//            for (id extension in valid_extensions)
-//            {
-//                if ([[fileFullPath pathExtension] isEqualToString:extension])
-//                {
-//                    has_valid_extension = true;
-//                }
-//            }
-//            
-//            if (has_valid_extension)
-//            {
-//                candidate = fileFullPath;
-//            }
-//            else
-//            {
-//                candidate = [NSString stringWithFormat:@"%@.tex", fileFullPath];
-//            }
-//            
-//            // Don't clobber existing files
-//            if (![fileManager fileExistsAtPath: candidate])
-//            {
-//                [fileManager createFileAtPath:candidate contents:nil attributes:nil];
-//            }
-//            
-//            // Send the new file name to be displayed in the menu
-//            
-//            if ([fileManager fileExistsAtPath: candidate])
-//            {
-//                io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: candidate] retain];
-//            }
         }
     }
 }
