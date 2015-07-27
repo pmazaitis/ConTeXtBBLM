@@ -11,8 +11,12 @@
 #include "context.h"
 #include <string>
 //
-//#import <Cocoa/Cocoa.h>
 
+//#import "NSTask+OneLineTasksWithOutput.h"
+
+#include "AppKit/AppKit.h"
+
+//@import AppKit;
 
 #pragma mark - Globals
 
@@ -170,6 +174,7 @@ static void isRunSpellable(BBLMParamBlock &params)
 
 static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
 {
+    // TODO: fix this to enumerate files, not dirs
     NSError *err;
     bool candidate_found = false;
     
@@ -187,7 +192,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     //
     NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
     NSString *fileName = (__bridge NSString *)io_params.fInIncludeFileString;
-    NSString *fileFullPath = [[NSString alloc] initWithString:[[[requestor  URLByDeletingLastPathComponent] URLByAppendingPathComponent:fileName] path]];
+    //NSString *fileFullPath = [[NSString alloc] initWithString:[[[requestor  URLByDeletingLastPathComponent] URLByAppendingPathComponent:fileName] path]];
     NSURL *parentURL = [[requestor
                           URLByDeletingLastPathComponent]
                          URLByDeletingLastPathComponent
@@ -199,13 +204,16 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
                                             options:NSDirectoryEnumerationSkipsHiddenFiles
                                             errorHandler:^BOOL(NSURL *url, NSError *error)
     {
-        if (error) {
+        if (error)
+        {
             NSLog(@"[Error] %@ (%@)", error, url);
             return NO;
         }
         
         return YES;
     }];
+    
+    // Look for requested file in parent directory and below
     
     for (NSURL *currURL in fileEnumerator)
     {
@@ -232,53 +240,145 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         if (candidate_found) {break;}
     }
     
-    // Messing about with UI
-//    NSAlert *alert = [[NSAlert alloc] init];
-//    [alert addButtonWithTitle:@"Create File"];
-//    [alert addButtonWithTitle:@"Cancel"];
-//    [alert setMessageText:@"Do you want to create the file?"];
-//    [alert setInformativeText:@"BBEdit was unable to locate the referenced file."];
-//    [alert setAlertStyle:NSWarningAlertStyle];
+    // Query the user's shell (if valid) for the value of TEXMFHOME
     
+    NSString *userShell = [[[NSProcessInfo processInfo] environment] objectForKey:@"SHELL"];
+    NSLog(@"### User's shell is %@", userShell);
     
+    // avoid executing stuff like /sbin/nologin as a shell
+    BOOL isValidShell = NO;
+    for (NSString *validShell in [[NSString stringWithContentsOfFile:@"/etc/shells" encoding:NSUTF8StringEncoding error:nil] componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]]) {
+        if ([[validShell stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] isEqualToString:userShell]) {
+            isValidShell = YES;
+            break;
+        }
+    }
     
-    // We couldn't find the file, so create the file in the same dir as the source file
+    if (isValidShell && !candidate_found) {
+        // Set up an NSTask to fetch the user's TEXMFHOME
+        // This is not especially robust
+        NSTask *pathTask = [[NSTask alloc] init];
+        
+        [pathTask setLaunchPath:userShell];
+        [pathTask setArguments:[NSArray arrayWithObjects:@"-c", @"echo $TEXMFHOME", nil]];
+        
+        NSPipe *outputPipe = [NSPipe pipe];
+        [pathTask setStandardOutput:outputPipe];
+        
+        [pathTask launch];
+        [pathTask waitUntilExit];
+        [pathTask release];
+        
+        NSFileHandle * read = [outputPipe fileHandleForReading];
+        NSData * dataRead = [read readDataToEndOfFile];
+        NSString * texmfPath = [[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""];
+        NSURL *texmfPathUrl = [[NSURL alloc] initWithString:[texmfPath autorelease]];
+        
+        
+        NSLog(@"### Found TEXMFPATH %@ as reported by %@", texmfPath, userShell);
+
+        NSDirectoryEnumerator * mfFileEnumerator = [fileManager enumeratorAtURL:texmfPathUrl
+                          includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
+                                             options:NSDirectoryEnumerationSkipsHiddenFiles
+                                        errorHandler:^BOOL(NSURL *url, NSError *error)
+                         {
+                             if (error)
+                             {
+                                 NSLog(@"[Error] %@ (%@)", error, url);
+                                 return NO;
+                             }
+                             
+                             return YES;
+                         }];
+        // Look for requested file in TEXMFHOME directory and below
+        for (NSURL *currURL in mfFileEnumerator)
+        {
+            // Loop through the items in the iterator; for each item that is a directory,
+            // check if any candidates (filename + a valid extension) exist.
+            NSNumber *isDirectory;
+            [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
+            // Only check if we have a directory
+            if ([isDirectory isEqualToNumber:@1])
+            {
+                NSString *currFilePath = [currURL absoluteString];
+                for (id extension in valid_extensions)
+                {
+                    NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
+                    NSURL *candidateURL = [NSURL URLWithString:candidate];
+                    if ([candidateURL checkResourceIsReachableAndReturnError:&err] == YES)
+                    {
+                        candidate_found = YES;
+                        io_params.fOutIncludedItemURL = (CFURLRef) [candidateURL retain];
+                        return;
+                    }
+                }
+            }
+            if (candidate_found) {break;}
+        }
+    }
+    
+    // We couldn't find the file, so see if we want to create it
     if (!candidate_found)
     {
         
-        NSString *candidate;
-        bool has_valid_extension = false;
+        //NSString *candidate;
+        //bool has_valid_extension = false;
         
-        for (id extension in valid_extensions)
+        NSString *msg = [NSString stringWithFormat:@"Do you want to create the file %@.tex?",fileName];
+        
+        NSAlert *alert = [[NSAlert alloc] init];
+        [alert addButtonWithTitle:@"Create File"];
+        [alert addButtonWithTitle:@"Cancel"];
+        [alert setMessageText:msg];
+        [alert setInformativeText:@"BBEdit was unable to locate the referenced file."];
+        [alert setAlertStyle:NSWarningAlertStyle];
+        NSInteger button = [alert runModal];
+        
+        if (button == NSAlertFirstButtonReturn)
         {
-            if ([[fileFullPath pathExtension] isEqualToString:extension])
-            {
-                has_valid_extension = true;
+            NSString* fileNameExt = [NSString stringWithFormat:@"%@.tex",fileName];
+            // Create file
+            // Set the default name for the file and show the panel.
+            NSSavePanel* panel = [NSSavePanel savePanel];
+            [panel setNameFieldStringValue:fileNameExt];
+            button = [panel runModal];
+            if (button == NSOKButton) {
+                // Got it, use the panel.URL field for something
+                [fileManager createFileAtPath:[panel.URL absoluteString] contents:nil attributes:nil];
+                io_params.fOutIncludedItemURL = (CFURLRef) [panel.URL retain];
             }
-        }
         
-        if (has_valid_extension)
-        {
-            candidate = fileFullPath;
+            
+//            for (id extension in valid_extensions)
+//            {
+//                if ([[fileFullPath pathExtension] isEqualToString:extension])
+//                {
+//                    has_valid_extension = true;
+//                }
+//            }
+//            
+//            if (has_valid_extension)
+//            {
+//                candidate = fileFullPath;
+//            }
+//            else
+//            {
+//                candidate = [NSString stringWithFormat:@"%@.tex", fileFullPath];
+//            }
+//            
+//            // Don't clobber existing files
+//            if (![fileManager fileExistsAtPath: candidate])
+//            {
+//                [fileManager createFileAtPath:candidate contents:nil attributes:nil];
+//            }
+//            
+//            // Send the new file name to be displayed in the menu
+//            
+//            if ([fileManager fileExistsAtPath: candidate])
+//            {
+//                io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: candidate] retain];
+//            }
         }
-        else
-        {
-            candidate = [NSString stringWithFormat:@"%@.tex", fileFullPath];
-        }
-        
-        // Don't clobber existing files
-        if (![fileManager fileExistsAtPath: candidate])
-        {
-            [fileManager createFileAtPath:candidate contents:nil attributes:nil];
-        }
-        
-        // Send the new file name to be displayed in the menu
-        
-        if ([fileManager fileExistsAtPath: candidate])
-        {
-            io_params.fOutIncludedItemURL = (CFURLRef) [[NSURL fileURLWithPath: candidate] retain];
-        }
-        
     }
 }
 
