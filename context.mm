@@ -174,7 +174,7 @@ static void isRunSpellable(BBLMParamBlock &params)
 
 static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
 {
-    // TODO: fix this to enumerate files, not dirs
+    // TODO: fix this to stat files, not dirs
     NSError *err;
     bool candidate_found = false;
     
@@ -193,11 +193,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
     NSString *fileName = (__bridge NSString *)io_params.fInIncludeFileString;
     //NSString *fileFullPath = [[NSString alloc] initWithString:[[[requestor  URLByDeletingLastPathComponent] URLByAppendingPathComponent:fileName] path]];
-    NSURL *parentURL = [[requestor
-                          URLByDeletingLastPathComponent]
-                         URLByDeletingLastPathComponent
-                         ];
-    
+    NSURL *parentURL = [[requestor URLByDeletingLastPathComponent] URLByDeletingLastPathComponent];
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSDirectoryEnumerator *fileEnumerator = [fileManager enumeratorAtURL:parentURL
                                              includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
@@ -222,14 +218,16 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         NSNumber *isDirectory;
         [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
         // Only check if we have a directory
-        if ([isDirectory isEqualToNumber:@1])
+        if ([isDirectory isEqualToNumber:@0])
         {
-            NSString *currFilePath = [currURL absoluteString];
+            NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
+            NSString *currFile = [currURL absoluteString];
+            //NSLog(@"### Checking for Match with %@",currFilePath);
             for (id extension in valid_extensions)
             {
                 NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
                 NSURL *candidateURL = [NSURL URLWithString:candidate];
-                if ([candidateURL checkResourceIsReachableAndReturnError:&err] == YES)
+                if ([candidate isEqualTo:currFile])
                 {
                     candidate_found = YES;
                     io_params.fOutIncludedItemURL = (CFURLRef) [candidateURL retain];
