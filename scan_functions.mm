@@ -7,9 +7,6 @@
 //
 //  See https://github.com/pmazaitis/ConTeXtBBLM
 
-//
-// TODO: special case naked /start nad /stop commands - supress folding in these cases.
-
 #include <string>
 #include <stack>
 #include <vector>
@@ -358,7 +355,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     int consec_comment_lines = 0;   // How many consecutive lines of comments to we have?
     UInt32 comm_fold_length = 0;    //
 
-    // TODO: use a block in the Info.plist to supply these values.
     vector<string> valid_title_types = {    "part",
                                             "chapter",
                                             "title",
@@ -372,9 +368,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                                             "subsubsubsubject",
                                             "subsubsubsubsection",
                                             "subsubsubsubsubject"};
-    
-
-
     
     iter += point.pos; // TODO: do we ever want to get this value from the params block?
     
