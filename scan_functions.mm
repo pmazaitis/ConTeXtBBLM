@@ -15,8 +15,6 @@
 
 #include "syslog.h"
 
-
-
 #define MAX_PARAM_SIZE 255
 #define MAX_RANK 4095
 
@@ -124,44 +122,6 @@ static bool skipWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
     return(false);
 }
 
-//static bool skipToWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
-//{
-//    while (!isspace(p->ch))
-//    {
-//        p->prev = p->ch;
-//        (*iter)++;
-//        (p->pos)++;
-//        
-//        if (iter->InBounds())
-//        {
-//            p->ch = **iter;
-//        }
-//        else
-//        {
-//            return(true);
-//        }
-//        
-//        // Do we have a new line?
-//        if (p->prev == '\r')
-//        {
-//            p->prev_start = p->line_start;
-//            p->line_start = (p->pos);
-//            p->line_number += 1;
-//        }
-//        
-//        // Are we in a comment?
-//        if (p->ch == '%' && p->prev != '\\')
-//        {
-//            p->in_comment = true;
-//        }
-//        if (p->in_comment && p->ch == '\r')
-//        {
-//            p->in_comment = false;
-//        }
-//    }
-//    return(false);
-//}
-
 static bool rollBack(BBLMTextIterator* iter, func_point_info* p)
 {
     (*iter)--;
@@ -183,7 +143,6 @@ static bool rollBack(BBLMTextIterator* iter, func_point_info* p)
     }
     return(false);
 }
-
 
 static bool getCommandNameAndType(BBLMTextIterator* iter, func_point_info* p, vector<UniChar>* c_name, vector<UniChar>* c_type, int skip)
 {
@@ -369,7 +328,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                                             "subsubsubsubsection",
                                             "subsubsubsubsubject"};
     
-    iter += point.pos; // TODO: do we ever want to get this value from the params block?
+    iter += point.pos;
     
     point.ch = *iter;
     point.line_start = 0;
@@ -526,8 +485,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             // * \readsysfile   (current path, obeys tex search)
             // * \readfixfile   (specified path, backtracking)
 
-            
-            
             if (iter.strcmp("\\environment") == 0 ||
                 iter.strcmp("\\project") == 0 ||
                 iter.strcmp("\\product") == 0 ||
@@ -541,7 +498,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 BBLMProcInfo info;
                 OSErr err;
                 UInt32 TYPE_SKIP = 0;
-                
                 
                 vector<UniChar> curr_name;    // Name of current command
                 vector<UniChar> curr_type;    // Type of current command
@@ -695,6 +651,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (iter.strcmp("\\definehead") == 0) // We have a new head definition
             {
+                // TODO: figure out rank of new head base on defining head level
                 string new_head_definition = "";
 
                 while (*iter != '[')
