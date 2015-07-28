@@ -248,6 +248,11 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     NSString *fileName = (__bridge NSString *)io_params.fInIncludeFileString;
     //NSString *fileFullPath = [[NSString alloc] initWithString:[[[requestor  URLByDeletingLastPathComponent] URLByAppendingPathComponent:fileName] path]];
     NSURL *parentURL = [[requestor URLByDeletingLastPathComponent] URLByDeletingLastPathComponent];
+    
+    NSURL * foundURL = findIncludeFile(io_params, parentURL, fileName);
+    
+    NSLog(@"### Result from function is %@", foundURL);
+    
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSDirectoryEnumerator *fileEnumerator = [fileManager enumeratorAtURL:parentURL
                                              includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
