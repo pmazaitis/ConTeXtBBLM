@@ -276,10 +276,12 @@ static int getTypeRank(string str_type)
     if([[type_ranks allKeys] containsObject:curr_type])
     {
         int curr_rank = [[type_ranks objectForKey:curr_type] intValue];
+        [type_ranks release];
         return curr_rank;
     }
     else
     {
+        [type_ranks release];
         return MAX_RANK;
     }
 
@@ -698,7 +700,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     }
                 }
             }
-            if (iter.stricmp("\\definehead") == 0) // We have a new head definition
+            if (iter.strcmp("\\definehead") == 0) // We have a new head definition
             {
                 string new_head_definition = "";
 
@@ -720,8 +722,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             {
                 vector<UniChar> curr_name;    // Name of current command
                 vector<UniChar> curr_type;    // Type of current command
-                fold_info curr_fold;        //
-                UInt32 TYPE_SKIP = 2;          // Number of characters to skip to get to command type
+                fold_info curr_fold;          //
+                UInt32 TYPE_SKIP = 2;         // Number of characters to skip to get to command type
                 
                 curr_fold.start = point.line_start;
                 // Pull the command type into a vector
@@ -735,12 +737,12 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (!point.in_comment && (iter.strcmp("\\eTABLE") == 0 || iter.strcmp("\\eTR") == 0))
             {
-                OSErr err;                  // Return check
+                OSErr err;                    // Return check
                 vector<UniChar> curr_name;    // Name of current command
                 vector<UniChar> curr_type;    // Type of current command
-                fold_info curr_fold;        // Fold from the top of the fold stack
-                UInt32 TYPE_SKIP = 2;          // Number of characters to skip to get to command type
-                string tt;                  // temp string of current command
+                fold_info curr_fold;          // Fold from the top of the fold stack
+                UInt32 TYPE_SKIP = 2;         // Number of characters to skip to get to command type
+                string tt;                    // temp string of current command
                
                 if (getCommandNameAndType(&iter, &point, &curr_name, &curr_type, TYPE_SKIP)) break;
                 tt.assign(curr_type.begin(), curr_type.end());
@@ -764,7 +766,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     }
                 }
             }
-            if (iter.stricmp("\\start") == 0) // Check if we have a start command.
+            if (iter.strcmp("\\start") == 0) // Check if we have a start command.
             {
                 // We want to populate the info block as we go:
                 //
@@ -953,7 +955,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 // Set fold with any updated values
                 if (show_fold) {pend_folds.push(curr_fold);}
             }
-            if (iter.stricmp("\\stop") == 0) // Check if we have a stop command.
+            if (iter.strcmp("\\stop") == 0) // Check if we have a stop command.
             {
                 BBLMProcInfo info;
                 OSErr err;                  // Return check
