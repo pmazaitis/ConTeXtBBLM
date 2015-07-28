@@ -10,13 +10,8 @@
 
 #include "context.h"
 #include <string>
-//
-
-//#import "NSTask+OneLineTasksWithOutput.h"
 
 #include "AppKit/AppKit.h"
-
-//@import AppKit;
 
 #pragma mark - Globals
 
@@ -63,7 +58,8 @@ static void disposeData()
 
 static void AddSymbols(NSString* inPartial, NSMutableArray* inCompletionArray)
 {
-    for (id match in global_command_array) {
+    for (id match in global_command_array)
+    {
         if ([match hasPrefix: inPartial])
         {
             NSDictionary* the_completion_dict = [[NSDictionary alloc] initWithObjectsAndKeys:
@@ -118,7 +114,8 @@ static void adjustRange(BBLMParamBlock &params, const BBLMCallbackBlock &callbac
 {
     bool result;
     
-    while (params.fAdjustRangeParams.fStartIndex > 0) {
+    while (params.fAdjustRangeParams.fStartIndex > 0)
+    {
         DescType language;
         NSString *kind;
         SInt32 pos;
@@ -171,6 +168,8 @@ static void isRunSpellable(BBLMParamBlock &params)
         params.fCanSpellCheckRunParams.fRunCanBeSpellChecked = false;
     }
 }
+
+#pragma mark - Include File Handling
 
 static NSURL* findIncludeFile(bblmResolveIncludeParams& io_params, NSURL* rootDir, NSString* fileName)
 {
@@ -232,18 +231,20 @@ static NSURL* getTexMfPathUrl ()
     
     // Query the user's shell (if valid) for the value of TEXMFHOME
     NSString *userShell = [[[NSProcessInfo processInfo] environment] objectForKey:@"SHELL"];
-    NSLog(@"### User's shell is %@", userShell);
     
     // avoid executing stuff like /sbin/nologin as a shell
     BOOL isValidShell = NO;
-    for (NSString *validShell in [[NSString stringWithContentsOfFile:@"/etc/shells" encoding:NSUTF8StringEncoding error:nil] componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]]) {
-        if ([[validShell stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] isEqualToString:userShell]) {
+    for (NSString *validShell in [[NSString stringWithContentsOfFile:@"/etc/shells" encoding:NSUTF8StringEncoding error:nil] componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]])
+    {
+        if ([[validShell stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] isEqualToString:userShell])
+        {
             isValidShell = YES;
             break;
         }
     }
     
-    if (isValidShell) {
+    if (isValidShell)
+    {
         // Set up an NSTask to fetch the user's TEXMFHOME
         // This is not especially robust
         NSTask *pathTask = [[NSTask alloc] init];
@@ -261,10 +262,7 @@ static NSURL* getTexMfPathUrl ()
         NSFileHandle * read = [outputPipe fileHandleForReading];
         NSData * dataRead = [read readDataToEndOfFile];
         NSString * texmfPath = [[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""];
-        texmfPathUrl = [[NSURL alloc] initWithString:[texmfPath autorelease]];
-        
-        
-        NSLog(@"### Found TEXMFPATH %@ as reported by %@", texmfPath, userShell);
+        texmfPathUrl = [[NSURL alloc] initWithString:texmfPath];
     }
     return texmfPathUrl;
 }
@@ -297,10 +295,10 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         foundURL = findIncludeFile(io_params, parentURL, fileName);
     }
     
-    // We couldn't find the file, so see if we want to create it
+    // We couldn't find the file...
     if (foundURL == nil)
     {
-        // We couldn't find the file, so see if we want to create it
+        // ...so see if we want to create it
         NSFileManager *fileManager = [NSFileManager defaultManager];
         
         NSString *msg = [NSString stringWithFormat:@"Do you want to create the file %@.tex?",fileName];
@@ -327,6 +325,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
                 io_params.fOutIncludedItemURL = (CFURLRef) [panel.URL retain];
             }
         }
+        [alert release];
     }
     else
     {
