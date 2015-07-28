@@ -225,80 +225,12 @@ static NSURL* findIncludeFile(bblmResolveIncludeParams& io_params, NSURL* rootDi
     return returnURL;
 }
 
-
-static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
+static NSURL* getTexMfPathUrl ()
 {
-    // TODO: fix this to stat files, not dirs
-    //NSError *err;
-    bool candidate_found = false;
-    // TODO: use this to capture candidate files: NSURL foundURL = nil;
-    // Extensions we want to look for
-    NSArray *valid_extensions = @[@"tex",
-                                  @"mkiv",
-                                  @"mkvi"];
-
-    // Get URL and filename
-    //
-    // requestor:           full URL of the file requesting the include
-    // fileName:            string of the (likely truncated) file name from the include directive
-    // fileFullPath:        string of full path to file for creation if we can't find it
-    // parentURL:           parent URL of requestor to initiate search
-    //
-    NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
-    NSString *fileName = (__bridge NSString *)io_params.fInIncludeFileString;
-    //NSString *fileFullPath = [[NSString alloc] initWithString:[[[requestor  URLByDeletingLastPathComponent] URLByAppendingPathComponent:fileName] path]];
-    NSURL *parentURL = [[requestor URLByDeletingLastPathComponent] URLByDeletingLastPathComponent];
     
-    NSURL * foundURL = findIncludeFile(io_params, parentURL, fileName);
-    
-    NSLog(@"### Result from function is %@", foundURL);
-    
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSDirectoryEnumerator *fileEnumerator = [fileManager enumeratorAtURL:parentURL
-                                             includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
-                                            options:NSDirectoryEnumerationSkipsHiddenFiles
-                                            errorHandler:^BOOL(NSURL *url, NSError *error)
-    {
-        if (error)
-        {
-            NSLog(@"[Error] %@ (%@)", error, url);
-            return NO;
-        }
-        
-        return YES;
-    }];
-    
-    // Look for requested file in parent directory and below
-    
-    for (NSURL *currURL in fileEnumerator)
-    {
-        // Loop through the items in the iterator; for each item that is a directory,
-        // check if any candidates (filename + a valid extension) exist.
-        NSNumber *isDirectory;
-        [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
-        // Don't check directories
-        if ([isDirectory isEqualToNumber:@0])
-        {
-            NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
-            NSString *currFile = [currURL absoluteString];
-            //NSLog(@"### Checking for Match with %@",currFilePath);
-            for (id extension in valid_extensions)
-            {
-                NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
-                NSURL *candidateURL = [NSURL URLWithString:candidate];
-                if ([candidate isEqualTo:currFile])
-                {
-                    candidate_found = YES;
-                    io_params.fOutIncludedItemURL = (CFURLRef) [candidateURL retain];
-                    return;
-                }
-            }
-        }
-        if (candidate_found) {break;}
-    }
+    NSURL *texmfPathUrl = nil;
     
     // Query the user's shell (if valid) for the value of TEXMFHOME
-    
     NSString *userShell = [[[NSProcessInfo processInfo] environment] objectForKey:@"SHELL"];
     NSLog(@"### User's shell is %@", userShell);
     
@@ -311,7 +243,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         }
     }
     
-    if (isValidShell && !candidate_found) {
+    if (isValidShell) {
         // Set up an NSTask to fetch the user's TEXMFHOME
         // This is not especially robust
         NSTask *pathTask = [[NSTask alloc] init];
@@ -329,60 +261,47 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         NSFileHandle * read = [outputPipe fileHandleForReading];
         NSData * dataRead = [read readDataToEndOfFile];
         NSString * texmfPath = [[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""];
-        NSURL *texmfPathUrl = [[NSURL alloc] initWithString:[texmfPath autorelease]];
+        texmfPathUrl = [[NSURL alloc] initWithString:[texmfPath autorelease]];
         
         
         NSLog(@"### Found TEXMFPATH %@ as reported by %@", texmfPath, userShell);
+    }
+    return texmfPathUrl;
+}
 
-        NSDirectoryEnumerator * mfFileEnumerator = [fileManager enumeratorAtURL:texmfPathUrl
-                          includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
-                                             options:NSDirectoryEnumerationSkipsHiddenFiles
-                                        errorHandler:^BOOL(NSURL *url, NSError *error)
-                         {
-                             if (error)
-                             {
-                                 NSLog(@"[Error] %@ (%@)", error, url);
-                                 return NO;
-                             }
-                             
-                             return YES;
-                         }];
-        // Look for requested file in TEXMFHOME directory and below
-        for (NSURL *currURL in mfFileEnumerator)
-        {
-            // Loop through the items in the iterator; for each item that is a directory,
-            // check if any candidates (filename + a valid extension) exist.
-            NSNumber *isDirectory;
-            [currURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
-            // Don't check directories
-            if ([isDirectory isEqualToNumber:@0])
-            {
-                NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
-                NSString *currFile = [currURL absoluteString];
-                //NSLog(@"### Checking for Match with %@",currFilePath);
-                for (id extension in valid_extensions)
-                {
-                    NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
-                    NSURL *candidateURL = [NSURL URLWithString:candidate];
-                    if ([candidate isEqualTo:currFile])
-                    {
-                        candidate_found = YES;
-                        io_params.fOutIncludedItemURL = (CFURLRef) [candidateURL retain];
-                        return;
-                    }
-                }
-            }
-            if (candidate_found) {break;}
-        }
-
+static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
+{
+    // This is nil until it gets a proper value
+    NSURL * foundURL = nil;
+    
+    // Get URL and filename
+    //
+    // requestor:           full URL of the file requesting the include
+    // fileName:            string of the (likely truncated) file name from the include directive
+    // parentURL:           parent URL of requestor to initiate search
+    //
+    NSURL *requestor = (__bridge NSURL *)io_params.fInDocumentURL;
+    NSString *fileName = (__bridge NSString *)io_params.fInIncludeFileString;
+    NSURL *parentURL = [[requestor URLByDeletingLastPathComponent] URLByDeletingLastPathComponent];
+    
+    if (foundURL == nil)
+    {
+        foundURL = findIncludeFile(io_params, parentURL, fileName);
+    }
+    
+    // Query the user's shell (if valid) for the value of TEXMFHOME
+    NSURL * TexMfPathUrl = getTexMfPathUrl();
+    
+    if (foundURL == nil && TexMfPathUrl != nil)
+    {
+        foundURL = findIncludeFile(io_params, parentURL, fileName);
     }
     
     // We couldn't find the file, so see if we want to create it
-    if (!candidate_found)
+    if (foundURL == nil)
     {
-        
-        //NSString *candidate;
-        //bool has_valid_extension = false;
+        // We couldn't find the file, so see if we want to create it
+        NSFileManager *fileManager = [NSFileManager defaultManager];
         
         NSString *msg = [NSString stringWithFormat:@"Do you want to create the file %@.tex?",fileName];
         
@@ -408,6 +327,11 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
                 io_params.fOutIncludedItemURL = (CFURLRef) [panel.URL retain];
             }
         }
+    }
+    else
+    {
+        // We did find the file; let BBEdit know
+        io_params.fOutIncludedItemURL = (CFURLRef) [foundURL retain];
     }
 }
 
