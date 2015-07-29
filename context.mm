@@ -226,8 +226,15 @@ static NSURL* findIncludeFile(bblmResolveIncludeParams& io_params, NSURL* rootDi
 
 static NSURL* getTexMfPathUrl ()
 {
+    // First: see if we can locate contexts kpsewhich and use it to verify the TEXMFHOME path
+    //          if so, set and return that path
+    // Second: test if ~/texmf is available (and assuming that if it exists, it's valid)
+    //          if available, return that path
+    // Third, give up and return nil
     
     NSURL *texmfPathUrl = nil;
+    
+    // Find context binary, then associated kpsewhich
     
     // Query the user's shell (if valid) for the value of TEXMFHOME
     NSString *userShell = [[[NSProcessInfo processInfo] environment] objectForKey:@"SHELL"];
@@ -245,12 +252,15 @@ static NSURL* getTexMfPathUrl ()
     
     if (isValidShell)
     {
-        // Set up an NSTask to fetch the user's TEXMFHOME
-        // This is not especially robust
+        // TODO: Better error handling here might not be amiss; right now,
+        // we are being *wildly* optimistic that every external command we
+        // run is available where we expect it, and
+        
+        // Set up an NSTask to fetch the location of the context binary
         NSTask *pathTask = [[NSTask alloc] init];
         
         [pathTask setLaunchPath:userShell];
-        [pathTask setArguments:[NSArray arrayWithObjects:@"-c", @"echo $TEXMFHOME", nil]];
+        [pathTask setArguments:[NSArray arrayWithObjects:@"-c", @"which context", nil]];
         
         NSPipe *outputPipe = [NSPipe pipe];
         [pathTask setStandardOutput:outputPipe];
@@ -261,9 +271,47 @@ static NSURL* getTexMfPathUrl ()
         
         NSFileHandle * read = [outputPipe fileHandleForReading];
         NSData * dataRead = [read readDataToEndOfFile];
-        NSString * texmfPath = [[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""];
-        texmfPathUrl = [[NSURL alloc] initWithString:texmfPath];
+        NSString * contextPath = [[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""];
+        
+        // if we don't have a context binary, we likely don't have an appropriate kpsewhich
+        if (![contextPath isEqual: @""])
+        {
+            NSURL * contextUrl = [[NSURL alloc] initWithString:contextPath];
+            NSURL * kpsewhichUrl = [[contextUrl URLByDeletingLastPathComponent] URLByAppendingPathComponent: @"kpsewhich"];
+            
+            // Set up an NSTask to fetch the location of the context binary
+            pathTask = [[NSTask alloc] init];
+            
+            [pathTask setLaunchPath:[kpsewhichUrl absoluteString]];
+            [pathTask setArguments:[NSArray arrayWithObjects:@"--expand-var=\\$TEXMFHOME", nil]];
+            
+            outputPipe = [NSPipe pipe];
+            [pathTask setStandardOutput:outputPipe];
+            
+            [pathTask launch];
+            [pathTask waitUntilExit];
+            [pathTask release];
+            
+            read = [outputPipe fileHandleForReading];
+            dataRead = [read readDataToEndOfFile];
+            NSString * texmfHome = [[[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""] stringByReplacingOccurrencesOfString:@"\\" withString:@""];
+            
+            texmfPathUrl  = [NSURL URLWithString:[@"file://" stringByAppendingString:texmfHome]];
+        }
     }
+    
+    // We assume that any errors above will not write garbage to the URL variable
+    if (texmfPathUrl == nil)
+    {
+        NSString * defaultHome = [@"~/texmf/" stringByExpandingTildeInPath];
+        BOOL isDir = NO;
+        BOOL isFile = [[NSFileManager defaultManager] fileExistsAtPath:defaultHome isDirectory:&isDir];
+        if(isFile && isDir)
+        {
+            texmfPathUrl = [NSURL URLWithString:[@"file://" stringByAppendingString:defaultHome]];
+        }
+    }
+    
     return texmfPathUrl;
 }
 
@@ -292,7 +340,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
     
     if (foundURL == nil && TexMfPathUrl != nil)
     {
-        foundURL = findIncludeFile(io_params, parentURL, fileName);
+        foundURL = findIncludeFile(io_params, TexMfPathUrl, fileName);
     }
     
     // We couldn't find the file...
@@ -321,8 +369,8 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
             button = [panel runModal];
             if (button == NSOKButton) {
                 // Got it, use the panel.URL field for something
-                [fileManager createFileAtPath:[panel.URL absoluteString] contents:nil attributes:nil];
-                io_params.fOutIncludedItemURL = (CFURLRef) [panel.URL retain];
+                [fileManager createFileAtPath:[[panel URL] absoluteString] contents:nil attributes:nil];
+                io_params.fOutIncludedItemURL = (CFURLRef) [[panel URL] retain];
             }
         }
         [alert release];
