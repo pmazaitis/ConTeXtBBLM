@@ -485,10 +485,11 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             // * \readsysfile   (current path, obeys tex search)
             // * \readfixfile   (specified path, backtracking)
 
-            if (iter.strcmp("\\environment") == 0 ||
+            if ((iter.strcmp("\\environment") == 0 ||
                 iter.strcmp("\\project") == 0 ||
                 iter.strcmp("\\product") == 0 ||
-                iter.strcmp("\\component") == 0
+                iter.strcmp("\\component") == 0)
+                && !point.in_comment
                 )
             {
                 UInt32 func_start = point.pos;
@@ -560,12 +561,13 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
             }
             
-            if (iter.strcmp("\\input") == 0 ||
+            if ((iter.strcmp("\\input") == 0 ||
                 iter.strcmp("\\ReadFile") == 0 ||
                 iter.strcmp("\\readfile") == 0 ||
                 iter.strcmp("\\readlocfile") == 0 ||
                 iter.strcmp("\\readsysfile") == 0 ||
-                iter.strcmp("\\readfixfile") == 0
+                iter.strcmp("\\readfixfile") == 0)
+                && !point.in_comment
                 )
             {
                 UInt32 func_start = point.pos;
