@@ -335,7 +335,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
         foundURL = findIncludeFile(io_params, parentURL, fileName);
     }
     
-    // Query the user's shell (if valid) for the value of TEXMFHOME
+    // Query the user's environment for TEXMFHOME
     NSURL * TexMfPathUrl = getTexMfPathUrl();
     
     if (foundURL == nil && TexMfPathUrl != nil)
