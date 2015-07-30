@@ -409,7 +409,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 if (func_list_depth != 0)
                 {
-                    callout_depth = func_list_depth + 1;
+                    callout_depth = func_list_depth;
                 }
                 
                 // Set up the info stanza
