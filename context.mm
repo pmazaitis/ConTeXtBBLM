@@ -226,10 +226,9 @@ static NSURL* findIncludeFile(bblmResolveIncludeParams& io_params, NSURL* rootDi
 
 static NSURL* getTexMfPathUrl ()
 {
-    // First:   Ask spotlight for the location of setuptex, and use that to run kpsewhich
-    // Second:  See if we can locate contexts kpsewhich and use it to verify the TEXMFHOME path
-    //          if so, set and return that path
-    // Third:   Test if ~/texmf is available (and assuming that if it exists, it's valid)
+    // First:   Ask spotlight for the location of kpsewhich, and use that to generate
+    //          the value for $TEXMFHOME
+    // Second:  Test if ~/texmf is available (and assuming that if it exists, it's valid);
     //          if available, return that path
     // Last:    Give up and return nil
 
@@ -254,22 +253,13 @@ static NSURL* getTexMfPathUrl ()
             NSMetadataItem *theResult = [q resultAtIndex:i];
             NSString *candidate = [theResult valueForAttribute:(NSString *)kMDItemPath];
             //NSLog(@"result at %lu - %@",i,candidate);
-            if (!([candidate rangeOfString:@"texlive"].location == NSNotFound))
+            if ([candidate rangeOfString:@"texlive"].location == NSNotFound)
             {
-                NSLog(@"Found TexLive candidate at %lu - %@",(unsigned long)i,candidate);
-            }
-            else if (!([candidate rangeOfString:@"stubs"].location == NSNotFound))
-            {
-                NSLog(@"Found stub file candidate at %lu - %@",(unsigned long)i,candidate);
-            }
-            else
-            {
-                NSLog(@"Found valid candidate at %lu - %@",(unsigned long)i,candidate);
                 kpsewhichPath = candidate;
             }
         }
         
-        // Now, if we have a path to setuptex, we can run kpsewhich to fetch the path
+        // Now, if we have a path to kpsewhich, fetch the path
         if (kpsewhichPath != nil)
         {
             // Set up an NSTask to run kpsewhich
@@ -292,79 +282,6 @@ static NSURL* getTexMfPathUrl ()
         }
         
     }
-
-//    if (texmfPathUrl == nil)
-//    {
-//        // Find context binary, then associated kpsewhich
-//        
-//        // Query the user's shell (if valid)
-//        NSString *userShell = [[[NSProcessInfo processInfo] environment] objectForKey:@"SHELL"];
-//        
-//        // avoid executing stuff like /sbin/nologin as a shell
-//        BOOL isValidShell = NO;
-//        for (NSString *validShell in [[NSString stringWithContentsOfFile:@"/etc/shells" encoding:NSUTF8StringEncoding error:nil] componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]])
-//        {
-//            if ([[validShell stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] isEqualToString:userShell])
-//            {
-//                isValidShell = YES;
-//                break;
-//            }
-//        }
-//
-//        if (isValidShell)
-//        {
-//            // TODO: Better error handling here might not be amiss; right now,
-//            // we are being *wildly* optimistic that every external command we
-//            // run is available where we expect it, and gives up precisely what
-//            // we need.
-//            
-//            // Set up an NSTask to fetch the location of the context binary
-//            // We need to run the user's shell here because we are dependant
-//            // on the user's shell environment
-//            NSTask *pathTask = [[NSTask alloc] init];
-//            
-//            [pathTask setLaunchPath:userShell];
-//            [pathTask setArguments:[NSArray arrayWithObjects:@"-c", @"which context", nil]];
-//            
-//            NSPipe *outputPipe = [NSPipe pipe];
-//            [pathTask setStandardOutput:outputPipe];
-//            
-//            [pathTask launch];
-//            [pathTask waitUntilExit];
-//            [pathTask release];
-//            
-//            NSFileHandle * read = [outputPipe fileHandleForReading];
-//            NSData * dataRead = [read readDataToEndOfFile];
-//            NSString * contextPath = [[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""];
-//            
-//            // if we don't have a context binary, we likely don't have an appropriate kpsewhich
-//            if (![contextPath isEqual: @""])
-//            {
-//                NSURL * contextUrl = [[NSURL alloc] initWithString:contextPath];
-//                // An optimistic action
-//                NSURL * kpsewhichUrl = [[contextUrl URLByDeletingLastPathComponent] URLByAppendingPathComponent: @"kpsewhich"];
-//                
-//                // Set up an NSTask to fetch the location of the context binary
-//                pathTask = [[NSTask alloc] init];
-//                
-//                [pathTask setLaunchPath:[kpsewhichUrl absoluteString]];
-//                [pathTask setArguments:[NSArray arrayWithObjects:@"--expand-var=\\$TEXMFHOME", nil]];
-//                
-//                outputPipe = [NSPipe pipe];
-//                [pathTask setStandardOutput:outputPipe];
-//                
-//                [pathTask launch];
-//                [pathTask waitUntilExit];
-//                [pathTask release];
-//                
-//                read = [outputPipe fileHandleForReading];
-//                dataRead = [read readDataToEndOfFile];
-//                NSString * texmfHome = [[[[NSString alloc] initWithData:dataRead encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@""] stringByReplacingOccurrencesOfString:@"\\" withString:@""];
-//                
-//                texmfPathUrl  = [NSURL URLWithString:[@"file://" stringByAppendingString:texmfHome]];
-//            }
-//        }
-//    }
     
     // We assume that any errors above will not write garbage to the URL variable
     if (texmfPathUrl == nil)
