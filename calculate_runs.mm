@@ -11,8 +11,6 @@
 
 #include "context.h"
 
-
-
 static bool skipRunChars(BBLMTextIterator* iter, SInt32* curr_pos_after, int n)
 {
     for(int i=0; i < n; i++)
