@@ -13,9 +13,9 @@
 #include "BBLMInterface.h"
 #include "BBLMTextIterator.h"
 
-#define kBBLMCommandRunKind             @"org.mazaitis.bblm.command"
-#define	kBBLMParameterRunKind			@"org.mazaitis.bblm.parameter"
-#define	kBBLMOptionRunKind				@"org.mazaitis.bblm.option"
+#define kBBLMCommandRunKind             @"org.mazaitis.bblm.context.command"
+#define	kBBLMParameterRunKind			@"org.mazaitis.bblm.context.parameter"
+#define	kBBLMOptionRunKind				@"org.mazaitis.bblm.context.option"
 
 #define LANGUAGE_CODE 'cTeX'
 
