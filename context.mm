@@ -234,6 +234,19 @@ static NSURL* getTexMfPathUrl ()
 
     NSURL * texmfPathUrl = nil;
     
+    // get value from plist TODO: next up
+//    if (texmfPathUrl == nil)
+//    {
+//        NSArray * settingsArray = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"com.mazaitis.bblm"];
+//        NSDictionary * settingsDict = [settingsArray objectAtIndex:0];
+//        NSString * candidate = [settingsDict valueForKey:@"TEXMFHOME"];
+//        NSLog(@"### Got candidate %@", candidate);
+//    }
+
+    
+    
+    
+    
     // Try checking spotlight for kpsewhich
     if (texmfPathUrl == nil)
     {
