@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>org.mazaitis.bblm</key>
+	<array>
+		<dict>
+			<key>TEXMFHOME</key>
+			<string>/Users/goob/texmf/bee</string>
+		</dict>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
@@ -31,9 +38,9 @@
 			<array>
 				<string>com.barebones.bblm.code</string>
 				<string>com.barebones.bblm.comment</string>
-				<string>org.mazaitis.bblm.command</string>
-				<string>org.mazaitis.bblm.parameter</string>
-				<string>org.mazaitis.bblm.option</string>
+				<string>org.mazaitis.bblm.context.command</string>
+				<string>org.mazaitis.bblm.context.parameter</string>
+				<string>org.mazaitis.bblm.context.option</string>
 			</array>
 			<key>BBLMFiltersRunsForSpellChecking</key>
 			<true/>
@@ -83,11 +90,11 @@
 			<false/>
 			<key>BBLMRunNames</key>
 			<dict>
-				<key>org.mazaitis.bblm.command</key>
+				<key>org.mazaitis.bblm.context.command</key>
 				<string>Command</string>
-				<key>org.mazaitis.bblm.parameter</key>
+				<key>org.mazaitis.bblm.context.parameter</key>
 				<string>Command Parameter</string>
-				<key>org.mazaitis.bblm.option</key>
+				<key>org.mazaitis.bblm.context.option</key>
 				<string>Command Option</string>
 				<key>com.barebones.bblm.comment</key>
 				<string>Comment</string>
@@ -98,11 +105,11 @@
 			</dict>
 			<key>BBLMRunColors</key>
 			<dict>
-				<key>org.mazaitis.bblm.command</key>
+				<key>org.mazaitis.bblm.context.command</key>
 				<string>rgb(25,78,137)</string>
-				<key>org.mazaitis.bblm.parameter</key>
+				<key>org.mazaitis.bblm.context.parameter</key>
 				<string>rgb(26,136,51)</string>
-				<key>org.mazaitis.bblm.option</key>
+				<key>org.mazaitis.bblm.context.option</key>
 				<string>rgb(94,15,42)</string>
 				<key>com.barebones.bblm.keyword</key>
 				<string>rgb(181,0,0)</string>
