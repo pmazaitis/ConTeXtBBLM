@@ -652,6 +652,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
             }
             if (iter.strcmp("\\definehead") == 0) // We have a new head definition
+            // TODO: add similar functionality for definestartstop
             {
                 // TODO: figure out rank of new head base on defining head level
                 string new_head_definition = "";
@@ -770,7 +771,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 if (!pend_folds.empty())
                 {
                     fold_info prev_fold = pend_folds.top();
-                    if (getTypeRank(cmd_type) <= prev_fold.rank)
+                    if (getTypeRank(cmd_type) < prev_fold.rank)
                     {
                         // We've missed a close, and need to tie off the fold.
                         fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
