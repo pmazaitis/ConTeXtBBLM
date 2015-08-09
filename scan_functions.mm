@@ -16,7 +16,7 @@
 #include "syslog.h"
 
 #define MAX_PARAM_SIZE 255
-#define MAX_RANK 4095
+#define MAX_RANK 32
 
 using namespace std;
 
@@ -765,13 +765,17 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 // Handle Folds
                 //
-                // We first want to check and see if we're seeing a type of the same or higher rank; if we're
-                // starting a new parent we want to tie off the fold.
-                
+                // First get previous fold, if it exists.
+                // If our current fold start is:
+                // * of a lower rank to the previous fold
+                // * of the same type as the previous fold
+                // ...then we have missed a close someplace, and we should tie off the fold
+    
                 if (!pend_folds.empty())
                 {
                     fold_info prev_fold = pend_folds.top();
-                    if (getTypeRank(cmd_type) < prev_fold.rank)
+                    //int curr_rank = getTypeRank(cmd_type);
+                    if (cmd_type == prev_fold.type)
                     {
                         // We've missed a close, and need to tie off the fold.
                         fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
@@ -931,37 +935,43 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 // Handle Folds
                 //
-                // Keep popping the stack until the rank of the prev_fold is greater than or equal to current stop
-                fold_info prev_fold;
-                if (!pend_folds.empty())
+                // Get the info fro the top of the stack
+                
+
+                if (show_fold && !pend_folds.empty())
                 {
-                    prev_fold = pend_folds.top();
-                }
-                if (show_fold)
-                {
-                    while (getTypeRank(cmd_type) <= prev_fold.rank && !pend_folds.empty())
+                    // We're not in a comment, and we have a previous fold to look at
+                    fold_info prev_fold;
+                    int curr_rank;
+                    do
                     {
-                        // We've missed a close, and need to tie off the fold.
-                        fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
-                        if (fold_length > 0)
-                        {
-                            err = bblmAddFoldRange(&bblm_callbacks, prev_fold.start, fold_length);
-                            if (err)
-                            {
-                                return err;
-                            }
-                        }
-                        // Pop the garbage fold value off of the pending fold stack.
-                        pend_folds.pop();
+                        // Load up the next pending function to check for a match
                         if (!pend_folds.empty())
                         {
                             prev_fold = pend_folds.top();
+                            curr_rank = getTypeRank(cmd_type);
                         }
                         else
                         {
                             break;
                         }
-                    }
+                        // If we have a type match, tie off the fold
+                        if (cmd_type == prev_fold.type)
+                        {
+                            fold_length = point.pos - prev_fold.start - (UInt32)cmd_type.length() - TYPE_SKIP;
+                            if (fold_length > 0)
+                            {
+                                err = bblmAddFoldRange(&bblm_callbacks, prev_fold.start, fold_length);
+                                if (err)
+                                {
+                                    return err;
+                                }
+                            }
+                            // Take finished fold off of the stack
+                            pend_folds.pop();
+                            break;
+                        }
+                    } while (!pend_folds.empty() && curr_rank < prev_fold.rank );
                 } // End fold handling
                 
                 // handle /stoptext fold
