@@ -40,7 +40,7 @@ Callouts must be in a commented region and include a space after the colon to be
 
 # Files Referenced With Project Structure and File Inclusion Commands
 
-This language module looks for files referenced by \environment commands, and adds them to the BBEdit navigational drop-down for include files.
+This language module looks for files referenced by project and file inclusion commands, and adds them to the BBEdit navigational drop-down for include files.
 
 At the moment, the language module searches for the referenced file with the extensions *.tex*, *.mkiv*, or *.mkvi*. The language module will search recursively downward in the filesystem from the parent directory of the referencing file. The language module will perform a similar search rooted in TEXMFHOME; if the language module can't figure out where TEXMFHOME is, the language module will use ~/texmf as TEXMFHOME if ~/texmf exists. If the referenced file is found, the file is loaded.
 
