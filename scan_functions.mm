@@ -197,25 +197,25 @@ static int getTypeRank(string str_type)
     NSString *curr_type = [NSString stringWithUTF8String:str_type.c_str()];
     
     NSDictionary * type_ranks = [[NSDictionary alloc] initWithObjectsAndKeys:
-                                 [NSNumber numberWithInt:0], @"component",
-                                 [NSNumber numberWithInt:1], @"text",
-                                 [NSNumber numberWithInt:2], @"part",
-                                 [NSNumber numberWithInt:2], @"frontmatter",
-                                 [NSNumber numberWithInt:2], @"bodymatter",
-                                 [NSNumber numberWithInt:2], @"backmatter",
-                                 [NSNumber numberWithInt:2], @"appendices",
-                                 [NSNumber numberWithInt:3], @"chapter",
-                                 [NSNumber numberWithInt:3], @"title",
-                                 [NSNumber numberWithInt:4], @"section",
-                                 [NSNumber numberWithInt:4], @"subject",
-                                 [NSNumber numberWithInt:5], @"subsection",
-                                 [NSNumber numberWithInt:5], @"subsubject",
-                                 [NSNumber numberWithInt:6], @"subsubsection",
-                                 [NSNumber numberWithInt:6], @"subsubsubject",
-                                 [NSNumber numberWithInt:7], @"subsubsubsection",
-                                 [NSNumber numberWithInt:7], @"subsubsubsubject",
-                                 [NSNumber numberWithInt:8], @"subsubsubsubsection",
-                                 [NSNumber numberWithInt:8], @"subsubsubsubsubject",
+                                 [NSNumber numberWithInt:1], @"component",
+                                 [NSNumber numberWithInt:2], @"text",
+                                 [NSNumber numberWithInt:3], @"part",
+                                 [NSNumber numberWithInt:3], @"frontmatter",
+                                 [NSNumber numberWithInt:3], @"bodymatter",
+                                 [NSNumber numberWithInt:3], @"backmatter",
+                                 [NSNumber numberWithInt:3], @"appendices",
+                                 [NSNumber numberWithInt:4], @"chapter",
+                                 [NSNumber numberWithInt:4], @"title",
+                                 [NSNumber numberWithInt:5], @"section",
+                                 [NSNumber numberWithInt:5], @"subject",
+                                 [NSNumber numberWithInt:6], @"subsection",
+                                 [NSNumber numberWithInt:6], @"subsubject",
+                                 [NSNumber numberWithInt:7], @"subsubsection",
+                                 [NSNumber numberWithInt:7], @"subsubsubject",
+                                 [NSNumber numberWithInt:8], @"subsubsubsection",
+                                 [NSNumber numberWithInt:8], @"subsubsubsubject",
+                                 [NSNumber numberWithInt:9], @"subsubsubsubsection",
+                                 [NSNumber numberWithInt:9], @"subsubsubsubsubject",
                                  nil];
 
     // And set special ranking values for heirarchy in the TABLE environment
@@ -774,7 +774,6 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 if (!pend_folds.empty())
                 {
                     fold_info prev_fold = pend_folds.top();
-                    //int curr_rank = getTypeRank(cmd_type);
                     if (cmd_type == prev_fold.type)
                     {
                         // We've missed a close, and need to tie off the fold.
@@ -943,8 +942,14 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     // We're not in a comment, and we have a previous fold to look at
                     fold_info prev_fold;
                     int curr_rank;
+                    vector<UniChar> last_type_seen;
                     do
                     {
+                        // Sanity check
+                        if (last_type_seen == curr_type)
+                        {
+                            break;
+                        }
                         // Load up the next pending function to check for a match
                         if (!pend_folds.empty())
                         {
@@ -970,6 +975,10 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                             // Take finished fold off of the stack
                             pend_folds.pop();
                             break;
+                        }
+                        else
+                        {
+                            last_type_seen = curr_type;
                         }
                     } while (!pend_folds.empty() && curr_rank < prev_fold.rank );
                 } // End fold handling
