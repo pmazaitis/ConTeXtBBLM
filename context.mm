@@ -224,7 +224,7 @@ static NSURL* findIncludeFile(bblmResolveIncludeParams& io_params, NSURL* rootDi
         {
             NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
             NSString *currFile = [currURL absoluteString];
-            //NSLog(@"### Checking for Match with %@",currFilePath);
+
             for (id extension in valid_extensions)
             {
                 NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
