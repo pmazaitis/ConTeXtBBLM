@@ -146,7 +146,7 @@ static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm
     // * "\startproduct"
     
     
-    int context_guess = kBBLMGuessMaybe;
+    //int context_guess = kBBLMGuessDefiniteNo; FIXME: try removing sentinel
     BBLMTextIterator iter(params);
     
     while (iter.InBounds())
@@ -157,12 +157,12 @@ static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm
             iter.stricmp("\\startcomponent") == 0 ||
             iter.stricmp("\\startproduct") == 0)
         {
-            context_guess = kBBLMGuessDefiniteYes;
+            params.fGuessLanguageParams.fGuessResult = kBBLMGuessDefiniteYes;
             break;
         }
         iter++;
     }
-    params.fGuessLanguageParams.fGuessResult = context_guess;
+    //params.fGuessLanguageParams.fGuessResult = context_guess;
 }
 
 // Is the current run spellable?
