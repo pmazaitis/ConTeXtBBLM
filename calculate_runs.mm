@@ -359,13 +359,13 @@ void calculateRuns(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbac
             {
                 curr_run_string = kBBLMCommentRunKind;
                 // No need to change runKind if we're in a comment block
-                if (iter.stricmp("\r%") == 0)
+                if (iter.stricmp("\r%") == 0 || iter.stricmp("\n%") == 0) // FIXME: we want to use BBLMCharacterIsLineBreak for this
                 {
                     // We want to skip twice in this case
                     if (skipRunChars(&iter, &curr_pos_after, 1)) return;
                 }
                 // end of line with no next comment, so revert to previous run kind
-                else if (curr_char == '\r')
+                else if (BBLMCharacterIsLineBreak(curr_char))
                 {
                     if (addRun(run_start_pos, curr_pos_after, bblm_callbacks, curr_run_string)) {run_start_pos = curr_pos_after;} else {return;}
                     pending_runs.pop();
