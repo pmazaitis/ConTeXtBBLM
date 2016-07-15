@@ -298,16 +298,12 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     point.in_comment = false;       // Track if we are in a comment to suppress folds
     
     // State stacks
-    stack<UInt32> pend_funcs;    // Keep track of pending functions
+    stack<UInt32> pend_funcs;       // Keep track of pending functions
     stack<fold_info> pend_folds;    // Keep track of pending folds
 
-    // Keep track of visible funciton depth
-    int func_list_depth = 0;
+    int func_list_depth = 0;        // Keep track of visible funciton depth
     
-    // General placeholder for fold_length calculations
-    UInt32 fold_length = 0;    //
-    // Keep track of fold depth, to error check for missing fold anchors
-    //UInt32 curr_fold_depth =0;
+    UInt32 fold_length = 0;         // General placeholder for fold_length calculations
     
     // Comment Block Fold Handling
     UInt32 comm_block_pos = 0;      // Start of possible comment block
