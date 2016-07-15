@@ -133,13 +133,31 @@ static void adjustRange(BBLMParamBlock &params, const BBLMCallbackBlock &callbac
 
 static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks)
 {
+    // Evidence suggests we only get this message when a file is loaded;
+    // It should be okay to grovel all the way through the file for an
+    // hint as to file type.
+    //
+    // The hints we're looking for:
+    //
+    // * "\starttext"
+    // * "\startproject"
+    // * "\startenvironment"
+    // * "\startcomponent"
+    // * "\startproduct"
+    
+    
     int context_guess = kBBLMGuessMaybe;
     BBLMTextIterator iter(params);
     
     while (iter.InBounds())
     {
-        if (iter.stricmp("\\starttext") == 0)
+        if (iter.stricmp("\\starttext") == 0 ||
+            iter.stricmp("\\startproject") == 0 ||
+            iter.stricmp("\\startenvironment") == 0 ||
+            iter.stricmp("\\startcomponent") == 0 ||
+            iter.stricmp("\\startproduct") == 0)
         {
+            NSLog(@"Found ConTeXt telltale");
             context_guess = kBBLMGuessDefiniteYes;
             break;
         }
