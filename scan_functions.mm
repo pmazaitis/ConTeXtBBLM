@@ -64,7 +64,7 @@ static bool skipChars(BBLMTextIterator* iter, func_point_info* p, int n)
         }
         
         // Do we have a new line?
-        if (p->prev == '\r')
+        if (BBLMCharacterIsLineBreak(p->prev))
         {
             p->prev_start = p->line_start;
             p->line_start = (p->pos);
@@ -76,7 +76,7 @@ static bool skipChars(BBLMTextIterator* iter, func_point_info* p, int n)
         {
             p->in_comment = true;
         }
-        if (p->in_comment && p->ch == '\r')
+        if (p->in_comment && BBLMCharacterIsLineBreak(p->ch))
         {
             p->in_comment = false;
         }
@@ -102,7 +102,7 @@ static bool skipWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
         }
         
         // Do we have a new line?
-        if (p->prev == '\r')
+        if (BBLMCharacterIsLineBreak(p->prev))
         {
             p->prev_start = p->line_start;
             p->line_start = (p->pos);
@@ -114,7 +114,7 @@ static bool skipWhiteSpace(BBLMTextIterator* iter, func_point_info* p)
         {
             p->in_comment = true;
         }
-        if (p->in_comment && p->ch == '\r')
+        if (p->in_comment && BBLMCharacterIsLineBreak(p->ch))
         {
             p->in_comment = false;
         }
@@ -127,7 +127,7 @@ static bool rollBack(BBLMTextIterator* iter, func_point_info* p)
     (*iter)--;
     (p->pos)--;
     
-    if (**iter == '\r')
+    if (BBLMCharacterIsLineBreak(**iter))
     {
         p->line_number -= 1;
     }
@@ -379,7 +379,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 
                 func_name_start = point.pos;
                 
-                while (*iter != '\r') {
+                while (!BBLMCharacterIsLineBreak(*iter)) {
                     // Collect Characters until we get to the end of the line
                     //curr_ch = *iter;
                     curr_marker.push_back(point.ch);
@@ -592,7 +592,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     )
                 {
                     // Find the start of the brackets
-                    while (point.ch != '{' && point.ch != '\r')
+                    while (point.ch != '{' && !BBLMCharacterIsLineBreak(point.ch))
                     {
                         if (skipChars(&iter, &point, 1)) break;
                     }
@@ -659,7 +659,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
                 // Eat the [
                 if (skipChars(&iter, &point, 1)) break;
-                while (*iter != ']' && *iter != '\r')
+                while (*iter != ']' && !BBLMCharacterIsLineBreak(*iter))
                 {
                     // Collect Characters until we get to the ending square bracket
                     new_head_definition += point.ch;
@@ -836,7 +836,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                                 }
                                 info.fSelStart = point.pos;
                                 // Get the title text (we do not expect the title text to include line breaks)
-                                while(inParamBlock(&iter, &point, param_char_count) && *iter != '}' && *iter != ']' && *iter != '\r')
+                                while(inParamBlock(&iter, &point, param_char_count) && *iter != '}' && *iter != ']' && !BBLMCharacterIsLineBreak(*iter))
                                 {
                                     param_char_count += 1;
                                     curr_title.push_back(point.ch);
