@@ -157,7 +157,6 @@ static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm
             iter.stricmp("\\startcomponent") == 0 ||
             iter.stricmp("\\startproduct") == 0)
         {
-            NSLog(@"Found ConTeXt telltale");
             context_guess = kBBLMGuessDefiniteYes;
             break;
         }
@@ -506,7 +505,7 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
             result = noErr;
             break;
         }
-        case kBBLMResolveIncludeFileMessage:
+        case kBBLMCreateURLByResolvingIncludeFileMessage:
         {
             resolveIncludeFile(params.fResolveIncludeParams);
             result = noErr;
