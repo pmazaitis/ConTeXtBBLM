@@ -40,6 +40,11 @@ static bool testSingleCharCommand(UniChar curr_char)
         case '&':
         case '{':
         case '}':
+        case '\':
+        case '^':
+        case '_':
+        case '|':
+        case '~':
             return true;
             break;
     }
