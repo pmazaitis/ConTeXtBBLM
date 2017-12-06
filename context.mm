@@ -138,7 +138,7 @@ static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm
     
     while (iter.InBounds())
     {
-        if (iter.stricmp("\\starttext") == 0 || iter.stricmp("\\startcomponent") || iter.stricmp("\\startproject"))
+        if (iter.stricmp("\\starttext") == 0 || iter.stricmp("\\startcomponent") || iter.stricmp("\\startproduct"))
         {
             context_guess = kBBLMGuessDefiniteYes;
             break;
