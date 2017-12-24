@@ -31,6 +31,26 @@ typedef	enum
 	kBBLMURLInclude,
 	kBBLMSiteRelativeInclude,
 	
+	kBBLMFunctionEnumDeclaration,
+	kBBLMFunctionStructDeclaration,
+	kBBLMFunctionUnionDeclaration,
+	kBBLMFunctionClassDeclaration,
+	kBBLMFunctionProtocolDeclaration,
+	kBBLMFunctionClassInterface,
+	kBBLMFunctionClassImplementation,
+	kBBLMFunctionInstanceVariable,
+	kBBLMFunctionMethod,
+	kBBLMFunctionPropertyDeclaration,
+	kBBLMFunctionPropertySynthesis,
+	kBBLMFunctionSGMLNamedID,
+	kBBLMFunctionHTMLNamedAnchor,
+	kBBLMFunctionHTMLHeading1,
+	kBBLMFunctionHTMLHeading2,
+	kBBLMFunctionHTMLHeading3,
+	kBBLMFunctionHTMLHeading4,
+	kBBLMFunctionHTMLHeading5,
+	kBBLMFunctionHTMLHeading6,
+	
 	kBBLMLastUsedFunctionKind,	//	do not change or use this value; it should always
 								//	occur after the last factory defined value
 	kBBLMLastCoreFunctionKind = 31,
@@ -46,6 +66,37 @@ typedef	enum
     kHTMLFunctionRubyRun = 250
 
 } BBLMFunctionKinds;
+
+#define	kBBLMFunctionTypeGeneral				@"com.barebones.bblm.function-type.function"
+#define	kBBLMFunctionTypeTypedef				@"com.barebones.bblm.function-type.typedef"
+#define	kBBLMFunctionTypeNamedMark				@"com.barebones.bblm.function-type.named-mark"
+#define	kBBLMFunctionTypeInclude				@"com.barebones.bblm.function-type.include"
+#define	kBBLMFunctionTypeSystemInclude			@"com.barebones.bblm.function-type.include.system"
+#define	kBBLMFunctionTypeFIXMECallout			@"com.barebones.bblm.function-type.callout.fixme"
+#define	kBBLMFunctionTypeTODOCallout			@"com.barebones.bblm.function-type.callout.to-do"
+#define	kBBLMFunctionTypeREVIEWCallout			@"com.barebones.bblm.function-type.callout.review"
+#define	kBBLMFunctionTypeQuestionCallout		@"com.barebones.bblm.function-type.callout.question"
+#define	kBBLMFunctionTypeWarningCallout			@"com.barebones.bblm.function-type.callout.warning"
+#define	kBBLMFunctionTypeNoteCallout			@"com.barebones.bblm.function-type.callout.note"
+#define kBBLMFunctionTypeClassDeclaration		@"com.barebones.bblm.function-type.class-declaration"
+#define	kBBLMFunctionTypeProtocolDeclaration	@"com.barebones.bblm.function-type.protocol-declaration"
+#define	kBBLMFunctionTypeClassInterface			@"com.barebones.bblm.function-type.class-interface"
+#define	kBBLMFunctionTypeClassImplementation	@"com.barebones.bblm.function-type.class-implementation"
+#define	kBBLMFunctionTypeInstanceVariable		@"com.barebones.bblm.function-type.ivar"
+#define	kBBLMFunctionTypeMethod					@"com.barebones.bblm.function-type.method"
+#define	kBBLMFunctionTypePropertyDeclaration	@"com.barebones.bblm.function-type.property.declaration"
+#define	kBBLMFunctionTypePropertySynthesis		@"com.barebones.bblm.function-type.property.synthesis"
+#define	kBBLMFunctionTypeEnumeration			@"com.barebones.bblm.function-type.enumeration"
+#define	kBBLMFunctionTypeStructureDeclaration	@"com.barebones.bblm.function-type.structure"
+#define	kBBLMFunctionTypeUnionDeclaration		@"com.barebones.bblm.function-type.union"
+#define	kBBLMFunctionTypeSGMLNamedID			@"com.barebones.bblm.function-type.sgml-named-id"
+#define	kBBLMFunctionTypeHTMLNamedAnchor		@"com.barebones.bblm.function-type.html-named-anchor"
+#define	kBBLMFunctionTypeHTMLHeading1			@"com.barebones.bblm.function-type.html-named-heading-1"
+#define	kBBLMFunctionTypeHTMLHeading2			@"com.barebones.bblm.function-type.html-named-heading-2"
+#define	kBBLMFunctionTypeHTMLHeading3			@"com.barebones.bblm.function-type.html-named-heading-3"
+#define	kBBLMFunctionTypeHTMLHeading4			@"com.barebones.bblm.function-type.html-named-heading-4"
+#define	kBBLMFunctionTypeHTMLHeading5			@"com.barebones.bblm.function-type.html-named-heading-5"
+#define	kBBLMFunctionTypeHTMLHeading6			@"com.barebones.bblm.function-type.html-named-heading-6"
 
 typedef	enum
 {
@@ -99,6 +150,7 @@ typedef	enum
 #define	kBBLMSGMLCloseTagRunKind			@"com.barebones.bblm.sgml-close-tag"	//	closers for openers (e.g. </ul>)
 #define kBBLMXMLPIRunKind					@"com.barebones.bblm.xml-pi"			//	processing instructions: <?...>
 #define	kBBLMXMLEmptyTagRunKind				@"com.barebones.bblm.xml-empty"			//	empty XML tags e.g. <hr />
+
 #define	kBBLMEmbeddedLanguageStartRunKind	@"com.barebones.bblm.embedded-start"	// zero-length runs, marking start or end
 #define	kBBLMEmbeddedLanguageEndRunKind		@"com.barebones.bblm.embedded-end"		// of languages, such as javascript in html
 
@@ -216,11 +268,16 @@ typedef	enum
 											//	corresponding to a particular word. (This replaces
 											//	kBBLMMatchKeywordWithCFStringMessage and 
 											//	kBBLMMatchPredefinedNameMessage from the old API.)
+
+	kBBLMAutoPairMessage,					//	When called, the editor is considering auto-pairing
+											//	a typed character.
 											
 	kBBLMLastMessage
 } BBLMMessage;
 
+#if (! __LP64__)
 #pragma pack(push, 2)
+#endif
 
 //	BBLMProcInfo - generated and used by the function scanner
 
@@ -238,20 +295,38 @@ typedef	struct BBLMProcInfo
 	UInt32	fKind;			//	token kind (see BBLMFunctionKinds for core kinds)
 	UInt32	fFlags;			//	token flags (see BBLMFunctionFlags)
 	UInt32	fNameStart;		//	char offset in token buffer of token name
-	UInt32	fNameLength;	//	length of token name
+	SInt32	fNameLength;	//	length of token name
 } BBLMProcInfo;
 
 //
 //	BBLMRunRec - generated and used by the syntax coloring machinery
 //
 
+#if __LP64__
+
 typedef struct
 {
-	OSType		language;
-	NSString	*runKind /* this value is neither retained nor released */;
-	SInt32		startPos;
-	SInt32		length;
+	OSType			language;
+	NSString		*runKind /* this value is neither retained nor released */;
+	SInt32			startPos;
+	SInt32			length;
+	UInt16			depth;
 } BBLMRunRec;
+
+#else
+
+#pragma pack(push, 1)
+typedef struct
+{
+	OSType			language;
+	NSString		*runKind /* this value is neither retained nor released */;
+	SInt32			startPos;
+	unsigned int	length : 24;
+	unsigned int	depth : 8;
+} BBLMRunRec;
+#pragma pack(pop)
+
+#endif
 
 //
 //	Dictionary keys for the array returned by kBBLMCreateSymbolCompletionArray message
@@ -450,7 +525,7 @@ typedef struct
 	CFRange			fInCompletionRange;
 	BBLMRunRec		fInCompletionRangeStartRun;
 	CFArrayRef		fOutSymbolCompletionArray;
-	CFIndex			fOutPreferredCompletionIndex;
+	SInt32			fOutPreferredCompletionIndex;
 	UInt32			fOutAdditionalLookupFlags;
 } bblmCreateCompletionArrayParams;
 
@@ -467,8 +542,20 @@ typedef struct
 	CFURLRef		fOutIncludedItemURL;
 } bblmResolveIncludeParams;
 
+typedef struct
+{
+	UniChar			fInTypedCharacter;			//	the character that the user typed
+	CFRange			fInSelectionRange;			//	the current selection range
+	BBLMRunRec		fInRunInfo;					//	if its runKind is not NIL, this is the run in which
+												//	typing is occurring
+												
+	UniChar			fOutPairingCharacter;		//	when called, its value is the proposed pairing character;
+												//	change it to zero to suppress auto-pairing, or change its
+												//	value to something else to pair with an alternative character
+} bblmAutoPairParams;
+
 #define	kBBLMParamBlockSignature	'R*ch'		//	parameter block signature
-#define	kBBLMParamBlockVersion		8			//	current parameter block version
+#define	kBBLMParamBlockVersion		9			//	current parameter block version
 
 class	CTextStorage;
 
@@ -506,6 +593,7 @@ typedef	struct
 		bblmFilterCompletionRunParams	fFilterCompletionRunParams;
 		bblmCreateCompletionArrayParams	fCreateCompletionArrayParams;
 		bblmResolveIncludeParams		fResolveIncludeParams;
+		bblmAutoPairParams				fAutoPairParams;
 	};
 	
 	UInt32					reserved[63];			//	reserved for future expansion
@@ -645,7 +733,9 @@ typedef	struct
 
 } BBLMCallbackBlock;
 
+#if (! __LP64__)
 #pragma pack(pop)
+#endif
 
 #pragma mark -
 
@@ -770,6 +860,23 @@ inline	bool		bblmGetRun(const BBLMCallbackBlock *callbacks,
 {
 	return callbacks->fGetRun(index, language, kind, charPos, length);
 }										
+
+inline	bool		bblmGetRun(const BBLMCallbackBlock *callbacks,
+								SInt32 index,
+								BBLMRunRec &runInfo)
+{
+	SInt32	runLength = 0;
+
+	if (bblmGetRun(callbacks, index, runInfo.language, runInfo.runKind, runInfo.startPos, runLength))
+	{
+		runInfo.depth = 0;
+		runInfo.length = runLength;
+		
+		return true;
+	}
+	
+	return false;
+}
 
 inline	SInt32		bblmFindRun(const BBLMCallbackBlock *callbacks,
 								SInt32 offset)
