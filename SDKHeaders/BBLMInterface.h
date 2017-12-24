@@ -90,6 +90,7 @@ typedef	enum
 #define	kBBLMKeywordRunKind					@"com.barebones.bblm.keyword"
 #define	kBBLMPredefinedSymbolRunKind		@"com.barebones.bblm.predefined-symbol"
 #define	kBBLMIndexedSymbolRunKind			@"com.barebones.bblm.indexed-symbol"
+#define	kBBLMSGMLCDATARunKind				@"com.barebones.bblm.sgml-cdata"		//	SGML unparsed character data (i.e. inside of a <![CDATA...]> block)
 #define	kBBLMSGMLPCDATARunKind				@"com.barebones.bblm.sgml-pcdata"		//	SGML parsed character data (i.e. things not in tags)
 #define	kBBLMSGMLEntityRunKind				@"com.barebones.bblm.sgml-entity"		//	an SGML/HTML/XML entity (named or numeric)
 #define	kBBLMSGMLDeclarationRunKind			@"com.barebones.bblm.sgml-decl"			//	<! ... > (not including comments)
@@ -205,7 +206,8 @@ typedef	enum
 											//	be sent to ask the module to return an array of possible
 											//	completions
 
-	kBBLMResolveIncludeFileMessage,			//	kBBLMCanResolveIncludeFiles is set, this message will be
+	kBBLMCreateURLByResolvingIncludeFileMessage,
+											//	if kBBLMCanResolveIncludeFiles is set, this message will be
 											//	sent to ask the module to return a URL to the included
 											//	file on disk (or elsewhere)
 	
@@ -285,6 +287,7 @@ typedef struct
 #define		kBBLMSymbolTypeStaticType			CFSTR("com.barebones.bblm.typedef")
 #define		kBBLMSymbolTypeStruct				CFSTR("com.barebones.bblm.struct")
 #define		kBBLMSymbolTypeUnion				CFSTR("com.barebones.bblm.union")
+#define		kBBLMSymbolTypeTextTemplate			CFSTR("com.barebones.bblm.text-template")
 
 #define	kBBLMSymbolCompletionDisplayString		CFSTR("DisplayString")	//	CFStringRef; used in the presentation UI
 
@@ -316,6 +319,7 @@ enum
 	kBBLMSymbolLookupWordsInFrontWindow	=	0x00000010,
 	kBBLMSymbolLookupWordsInSystemDict	=	0x00000020,
 	kBBLMSymbolLookupTagMaker			=	0x00000040,
+	kBBLMSymbolLookupTextReplacements	=	0x00000080,
 	
 	kBBLMSymbolLookupEverywherePossible	=	0xFFFFFFFF
 };
@@ -701,6 +705,53 @@ inline	OSErr	bblmUpdateFunctionEntry(const BBLMCallbackBlock *callbacks,
 	return callbacks->fUpdateFunctionEntry(procList, index, new_info);
 }
 
+inline	//	this is one-call alternative to using bblmAddCFStringTokenToBuffer() followed by bblmAddFunctionToList().
+OSStatus	bblmAddFunctionToList(const BBLMCallbackBlock *callbacks,
+									void *tokenBuffer,
+									void *procList,
+									CFStringRef name,
+									BBLMProcInfo &info,
+									UInt32 *index)
+{
+	OSStatus	err = noErr;
+	
+	//	basic parameter validation
+	require_action(nil != callbacks, EXIT, err = paramErr);
+	require_action(nil != tokenBuffer, EXIT, err = paramErr);
+	require_action(nil != procList, EXIT, err = paramErr);
+	require_action(nil != name, EXIT, err = paramErr);
+	
+	require_noerr(err = bblmAddCFStringTokenToBuffer(callbacks,
+														tokenBuffer,
+														name,
+														&info.fNameStart),
+					EXIT);
+	
+	require_noerr(err = bblmAddFunctionToList(callbacks,
+												procList,
+												info,
+												index),
+					EXIT);
+	
+EXIT:
+	return err;
+}
+
+inline	//	this is just the above, with an NSString parameter so that there's no need for a cast.
+OSStatus	bblmAddFunctionToList(const BBLMCallbackBlock *callbacks,
+									void *tokenBuffer,
+									void *procList,
+									NSString *name,
+									BBLMProcInfo &info,
+									UInt32 *index)
+{
+	return bblmAddFunctionToList(callbacks,
+									tokenBuffer,
+									procList,
+									reinterpret_cast<CFStringRef>(name),
+									info,
+									index);
+}
 
 #pragma mark -
 #pragma mark Syntax Coloring Callbacks
@@ -786,6 +837,36 @@ inline	OSErr		bblmFindEmbeddedLanguageFunctionsInRange(const BBLMCallbackBlock *
 															myParams,
 															startOffset,
 															rangeLength);
+}
+
+//
+//	Use BBLMCharacterIsLineBreak() instead of explicitly testing against \r or \n.
+//	This will ensure compatibility with past and future versions of BBEdit and
+//	TextWrangler.
+//
+
+inline
+bool	BBLMCharacterIsLineBreak(const UniChar ch) __attribute__((const, always_inline));
+
+inline
+bool	BBLMCharacterIsLineBreak(const UniChar ch)
+{
+	return ('\r' == ch) || ('\n' == ch);
+}
+
+//
+//	Use BBLMCharacterIsBlankOrTab() instead of explicitly testing character values.
+//	This will ensure compatibility with past and future versions of BBEdit and
+//	TextWrangler.
+//
+
+inline
+bool	BBLMCharacterIsBlankOrTab(const UniChar ch) __attribute__((const, always_inline));
+
+inline
+bool	BBLMCharacterIsBlankOrTab(const UniChar ch)
+{
+	return (' ' == ch) || ('\t' == ch);
 }
 
 #else

@@ -133,19 +133,40 @@ static void adjustRange(BBLMParamBlock &params, const BBLMCallbackBlock &callbac
 
 static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks)
 {
-    int context_guess = kBBLMGuessMaybe;
+    // Evidence suggests we only get this message when a file is loaded;
+    // It should be okay to grovel all the way through the file for an
+    // hint as to file type.
+    //
+    // The hints we're looking for:
+    //
+    // * "\starttext"
+    // * "\startproject"
+    // * "\startenvironment"
+    // * "\startcomponent"
+    // * "\startproduct"
+    
+    
+    //int context_guess = kBBLMGuessDefiniteNo; FIXME: try removing sentinel
     BBLMTextIterator iter(params);
     
     while (iter.InBounds())
     {
+<<<<<<< HEAD
         if (iter.stricmp("\\starttext") == 0 || iter.stricmp("\\startcomponent") || iter.stricmp("\\startproduct"))
+=======
+        if (iter.stricmp("\\starttext") == 0 ||
+            iter.stricmp("\\startproject") == 0 ||
+            iter.stricmp("\\startenvironment") == 0 ||
+            iter.stricmp("\\startcomponent") == 0 ||
+            iter.stricmp("\\startproduct") == 0)
+>>>>>>> cb5d6171aaedd3f33df00da1a0d1ccb295ea420e
         {
-            context_guess = kBBLMGuessDefiniteYes;
+            params.fGuessLanguageParams.fGuessResult = kBBLMGuessDefiniteYes;
             break;
         }
         iter++;
     }
-    params.fGuessLanguageParams.fGuessResult = context_guess;
+    //params.fGuessLanguageParams.fGuessResult = context_guess;
 }
 
 // Is the current run spellable?
@@ -207,7 +228,7 @@ static NSURL* findIncludeFile(bblmResolveIncludeParams& io_params, NSURL* rootDi
         {
             NSString *currFilePath = [[currURL URLByDeletingLastPathComponent] absoluteString];
             NSString *currFile = [currURL absoluteString];
-            //NSLog(@"### Checking for Match with %@",currFilePath);
+
             for (id extension in valid_extensions)
             {
                 NSString *candidate = [NSString stringWithFormat:@"%@%@.%@",currFilePath,fileName,extension];
@@ -233,19 +254,6 @@ static NSURL* getTexMfPathUrl ()
     // Last:    Give up and return nil
 
     NSURL * texmfPathUrl = nil;
-    
-    // get value from plist TODO: next up
-//    if (texmfPathUrl == nil)
-//    {
-//        NSArray * settingsArray = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"com.mazaitis.bblm"];
-//        NSDictionary * settingsDict = [settingsArray objectAtIndex:0];
-//        NSString * candidate = [settingsDict valueForKey:@"TEXMFHOME"];
-//        NSLog(@"### Got candidate %@", candidate);
-//    }
-
-    
-    
-    
     
     // Try checking spotlight for kpsewhich
     if (texmfPathUrl == nil)
@@ -488,7 +496,7 @@ OSErr	ConTeXtMachO(BBLMParamBlock &params, const BBLMCallbackBlock &bblmCallback
             result = noErr;
             break;
         }
-        case kBBLMResolveIncludeFileMessage:
+        case kBBLMCreateURLByResolvingIncludeFileMessage:
         {
             resolveIncludeFile(params.fResolveIncludeParams);
             result = noErr;

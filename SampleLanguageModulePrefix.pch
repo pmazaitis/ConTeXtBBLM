@@ -1,0 +1,34 @@
+
+#include <objc/objc.h>	//	this sets up "nil" appropriately
+
+#ifndef NULL
+# if __has_feature(cxx_nullptr)
+#   define NULL nullptr
+# else
+#   define NULL __DARWIN_NULL
+# endif
+#endif
+
+#include <AssertMacros.h>					// necessary to include before CoreServices.h
+
+#include <sys/types.h>
+#include <wchar.h>
+#include <wctype.h>
+
+#if __OBJC__
+#include <Cocoa/Cocoa.h>
+
+@interface NSObject (FirstObjectExtensions)
+
+//
+//	this is missing from all of the SDKs prior to 10.9. When we start using that SDK
+//	or newer we can take this out.
+//
+
+- (id)firstObject NS_AVAILABLE(10_6, 4_0);
+
+@end
+
+#endif
+
+#include <CoreFoundation/CoreFoundation.h>
