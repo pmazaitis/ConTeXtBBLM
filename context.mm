@@ -363,7 +363,7 @@ static void resolveIncludeFile(bblmResolveIncludeParams& io_params)
             NSSavePanel* panel = [NSSavePanel savePanel];
             [panel setNameFieldStringValue:fileNameExt];
             button = [panel runModal];
-            if (button == NSOKButton) {
+            if (button == NSModalResponseOK) {
                 // Got it, use the panel.URL field for something
                 [fileManager createFileAtPath:[[panel URL] absoluteString] contents:nil attributes:nil];
                 io_params.fOutIncludedItemURL = (CFURLRef) [[panel URL] retain];
