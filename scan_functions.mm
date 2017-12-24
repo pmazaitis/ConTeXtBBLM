@@ -197,7 +197,9 @@ static int getTypeRank(string str_type)
     NSString *curr_type = [NSString stringWithUTF8String:str_type.c_str()];
     
     NSDictionary * type_ranks = [[NSDictionary alloc] initWithObjectsAndKeys:
-                                 [NSNumber numberWithInt:1], @"component",
+                                 [NSNumber numberWithInt:1], @"project",
+                                 [NSNumber numberWithInt:2], @"product",
+                                 [NSNumber numberWithInt:2], @"component",
                                  [NSNumber numberWithInt:2], @"text",
                                  [NSNumber numberWithInt:3], @"part",
                                  [NSNumber numberWithInt:3], @"frontmatter",
@@ -314,19 +316,38 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     int consec_comment_lines = 0;   // How many consecutive lines of comments to we have?
     UInt32 comm_fold_length = 0;    //
 
-    vector<string> valid_title_types = {    "part",
-                                            "chapter",
-                                            "title",
-                                            "section",
-                                            "subject",
-                                            "subsection",
-                                            "subsubject",
-                                            "subsubsection",
-                                            "subsubsubject",
-                                            "subsubsubsection",
-                                            "subsubsubsubject",
-                                            "subsubsubsubsection",
-                                            "subsubsubsubsubject"};
+    vector<string> valid_fold_types = {
+        "project",
+        "product",
+        "component",
+        "part",
+        "chapter",
+        "title",
+        "section",
+        "subject",
+        "subsection",
+        "subsubject",
+        "subsubsection",
+        "subsubsubject",
+        "subsubsubsection",
+        "subsubsubsubject",
+        "subsubsubsubsection",
+        "subsubsubsubsubject"};
+    
+    vector<string> valid_title_types = {
+        "part",
+        "chapter",
+        "title",
+        "section",
+        "subject",
+        "subsection",
+        "subsubject",
+        "subsubsection",
+        "subsubsubject",
+        "subsubsubsection",
+        "subsubsubsubject",
+        "subsubsubsubsection",
+        "subsubsubsubsubject"};
     
     iter += point.pos;
     
@@ -669,6 +690,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     new_head_definition += point.ch;
                     if (skipChars(&iter, &point, 1)) break;
                 }
+                valid_fold_types.push_back(new_head_definition); // Add our new definition to the list of valid folds
                 valid_title_types.push_back(new_head_definition); // Add our new definition to the list of valid heads
             }
             if (!point.in_comment && (iter.strcmp("\\bTABLE") == 0 || iter.strcmp("\\bTR") == 0))
@@ -754,6 +776,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 cmd_name.assign(curr_name.begin(), curr_name.end());
                 cmd_type.assign(curr_type.begin(), curr_type.end());
                 if (cmd_name == "\\start") {show_fold = false;}
+//                bool is_known_fold = (find(valid_fold_types.begin(), valid_fold_types.end(), cmd_type) != valid_fold_types.end());
                 bool is_known_type = (find(valid_title_types.begin(), valid_title_types.end(), cmd_type) != valid_title_types.end());
 
                 // Set up info stanza as far as we can
