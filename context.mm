@@ -151,15 +151,11 @@ static void guessIfContext(BBLMParamBlock &params, const BBLMCallbackBlock &bblm
     
     while (iter.InBounds())
     {
-<<<<<<< HEAD
-        if (iter.stricmp("\\starttext") == 0 || iter.stricmp("\\startcomponent") || iter.stricmp("\\startproduct"))
-=======
         if (iter.stricmp("\\starttext") == 0 ||
             iter.stricmp("\\startproject") == 0 ||
             iter.stricmp("\\startenvironment") == 0 ||
             iter.stricmp("\\startcomponent") == 0 ||
             iter.stricmp("\\startproduct") == 0)
->>>>>>> cb5d6171aaedd3f33df00da1a0d1ccb295ea420e
         {
             params.fGuessLanguageParams.fGuessResult = kBBLMGuessDefiniteYes;
             break;
