@@ -3,6 +3,11 @@
 #ifndef BBLMINTERFACE_h
 #define BBLMINTERFACE_h 1
 
+#ifndef __ASSERTMACROS__
+#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES	1
+#include <AssertMacros.h>
+#endif
+
 enum
 {
 	kBBLMCurrentCallbackVersion = 0x00000007
@@ -139,6 +144,7 @@ typedef	enum
 #define	kBBLMFileIncludeRunKind				@"com.barebones.bblm.file-include"
 #define	kBBLMVariableRunKind				@"com.barebones.bblm.variable"
 #define	kBBLMKeywordRunKind					@"com.barebones.bblm.keyword"
+#define kBBLMSyntaxErrorRunKind				@"com.barebones.bblm.syntax-error"
 #define	kBBLMPredefinedSymbolRunKind		@"com.barebones.bblm.predefined-symbol"
 #define	kBBLMIndexedSymbolRunKind			@"com.barebones.bblm.indexed-symbol"
 #define	kBBLMSGMLCDATARunKind				@"com.barebones.bblm.sgml-cdata"		//	SGML unparsed character data (i.e. inside of a <![CDATA...]> block)
