@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "5F05133905A0957400BD0E76"
-               BuildableName = "ConTeXt.bblm"
+               BuildableName = "ConTeXt"
                BlueprintName = "ConTeXt"
                ReferencedContainer = "container:ConTeXt.xcodeproj">
             </BuildableReference>
@@ -54,7 +54,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5F05133905A0957400BD0E76"
-            BuildableName = "ConTeXt.bblm"
+            BuildableName = "ConTeXt"
             BlueprintName = "ConTeXt"
             ReferencedContainer = "container:ConTeXt.xcodeproj">
          </BuildableReference>
@@ -78,7 +78,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5F05133905A0957400BD0E76"
-            BuildableName = "ConTeXt.bblm"
+            BuildableName = "ConTeXt"
             BlueprintName = "ConTeXt"
             ReferencedContainer = "container:ConTeXt.xcodeproj">
          </BuildableReference>

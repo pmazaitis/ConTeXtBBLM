@@ -10,7 +10,6 @@
 		5F05134005A0957400BD0E76 /* context.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2E4853BA05A07363009789C1 /* context.mm */; };
 		7F12D0411AED35BB00929EFC /* scan_functions.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F12D03F1AED35BB00929EFC /* scan_functions.mm */; };
 		7F12D0441AED35CB00929EFC /* calculate_runs.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F12D0421AED35CB00929EFC /* calculate_runs.mm */; };
-		7F2033991B4C5CBD0061B106 /* context-keywords.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7F2033961B4C5CBD0061B106 /* context-keywords.txt */; };
 		7F20339B1B4F23040061B106 /* context-commands-en.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7F20339A1B4F23040061B106 /* context-commands-en.txt */; };
 		7F6BF6261B64701E00FA6DE1 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F6BF6251B64701E00FA6DE1 /* AppKit.framework */; };
 /* End PBXBuildFile section */
@@ -28,9 +27,6 @@
 /* End PBXBuildRule section */
 
 /* Begin PBXFileReference section */
-		1DB498A31D317D730057FDCE /* ReleaseSettings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = ReleaseSettings.xcconfig; sourceTree = "<group>"; };
-		1DB498A51D317D830057FDCE /* SampleSharedLanguageModules.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = SampleSharedLanguageModules.xcconfig; sourceTree = "<group>"; };
-		1DB498A71D317D980057FDCE /* DebugSettings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = DebugSettings.xcconfig; sourceTree = "<group>"; };
 		1DB498A91D317E600057FDCE /* ConTeXt.bblm */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConTeXt.bblm; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DB498AC1D317ECB0057FDCE /* SampleLanguageModulePrefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SampleLanguageModulePrefix.pch; sourceTree = "<group>"; };
 		2E4853BA05A07363009789C1 /* context.mm */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.objcpp; path = context.mm; sourceTree = SOURCE_ROOT; };
@@ -224,7 +220,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 56AB718D19B3CA8F0045726A /* DebugSettings.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
 				CURRENT_PROJECT_VERSION = 1.4;
@@ -247,7 +243,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 56AB718E19B3CA8F0045726A /* ReleaseSettings.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
 				CURRENT_PROJECT_VERSION = 1.4;
