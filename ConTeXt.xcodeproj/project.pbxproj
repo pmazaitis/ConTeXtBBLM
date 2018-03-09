@@ -11,6 +11,8 @@
 		7F12D0411AED35BB00929EFC /* scan_functions.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F12D03F1AED35BB00929EFC /* scan_functions.mm */; };
 		7F12D0441AED35CB00929EFC /* calculate_runs.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F12D0421AED35CB00929EFC /* calculate_runs.mm */; };
 		7F20339B1B4F23040061B106 /* context-commands-en.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7F20339A1B4F23040061B106 /* context-commands-en.txt */; };
+		7F48E54820519F5F00C91EB6 /* BBLMToken.h in Headers */ = {isa = PBXBuildFile; fileRef = 7F48E54520519F5F00C91EB6 /* BBLMToken.h */; };
+		7F48E54A20519F5F00C91EB6 /* BBLMTextUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 7F48E54720519F5F00C91EB6 /* BBLMTextUtils.h */; };
 		7F6BF6261B64701E00FA6DE1 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F6BF6251B64701E00FA6DE1 /* AppKit.framework */; };
 /* End PBXBuildFile section */
 
@@ -41,6 +43,8 @@
 		7F2033961B4C5CBD0061B106 /* context-keywords.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "context-keywords.txt"; sourceTree = "<group>"; };
 		7F20339A1B4F23040061B106 /* context-commands-en.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "context-commands-en.txt"; sourceTree = "<group>"; };
 		7F2F0EE61AC33298003E6265 /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = context.h; sourceTree = "<group>"; };
+		7F48E54520519F5F00C91EB6 /* BBLMToken.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BBLMToken.h; path = SDKHeaders/BBLMToken.h; sourceTree = "<group>"; };
+		7F48E54720519F5F00C91EB6 /* BBLMTextUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BBLMTextUtils.h; path = SDKHeaders/BBLMTextUtils.h; sourceTree = "<group>"; };
 		7F6BF6251B64701E00FA6DE1 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -88,6 +92,8 @@
 		2EADE40E056EA22B004A4EFC /* SDK Headers */ = {
 			isa = PBXGroup;
 			children = (
+				7F48E54720519F5F00C91EB6 /* BBLMTextUtils.h */,
+				7F48E54520519F5F00C91EB6 /* BBLMToken.h */,
 				2EADE3E1056EA12A004A4EFC /* BBLMTextIterator.h */,
 				2EADE3E2056EA12A004A4EFC /* BBLMInterface.h */,
 			);
@@ -109,6 +115,8 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F48E54A20519F5F00C91EB6 /* BBLMTextUtils.h in Headers */,
+				7F48E54820519F5F00C91EB6 /* BBLMToken.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
