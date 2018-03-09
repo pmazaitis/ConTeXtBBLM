@@ -561,8 +561,11 @@ typedef struct
 } bblmAutoPairParams;
 
 #define	kBBLMParamBlockSignature	'R*ch'		//	parameter block signature
-#define	kBBLMParamBlockVersion		9			//	current parameter block version
-
+#define	kBBLMParamBlockVersion		9			//	current parameter block version (BBEdit 12.x)
+#define	kBBLMMinimumCompatibleParamBlockVersion \
+									8			//	minimum parameter block version
+												//	that is compatible with these APIs.
+												//	Version 8 corresponds to BBEdit 11.0.
 class	CTextStorage;
 
 typedef	struct
