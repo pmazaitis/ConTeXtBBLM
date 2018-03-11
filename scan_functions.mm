@@ -274,7 +274,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     // The scanner will look for /setuphead commands, and add these commands to
     // the function drop-down as well.
     //
-    // Indentation in the function drop-down reflects indentation in the document.
+    // Indentation in the function drop-down reflects the heirarchical structure in the document.
     //
     // The scanner will look for a set list of callouts in comment regions, and add
     // these callouts to the function drop-down when found. Callouts are not indented.
@@ -290,6 +290,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     BBLMTextIterator iter(params);  // Iterator as supplied by calling code
     OSErr  result = noErr;          // Return check
     bool beyond_eof;                // Flag for getting out of nested parsers
+    bool unbalanced_fold;            // Flag for short-circuiting folding
     
     func_point_info point;
     point.ch = ' ';                 // The current character we're processing
@@ -386,6 +387,8 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 callout_kind = kBBLMNoteCallout;
             }
             
+            // TODO: (v2.1) test against callouts indicated in the BBLM plist, assign Note callout
+                
             if (callout_kind != 0)
             {
                 UInt32 func_start = point.pos;
@@ -501,7 +504,9 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             // * \readlocfile   (current path)
             // * \readsysfile   (current path, obeys tex search)
             // * \readfixfile   (specified path, backtracking)
-
+            //
+            // ...so that we can support using the editor's ability to go to a referenced file.
+            
             if ((iter.strcmp("\\environment") == 0 ||
                 iter.strcmp("\\project") == 0 ||
                 iter.strcmp("\\product") == 0 ||
@@ -669,9 +674,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 }
             }
             if (iter.strcmp("\\definehead") == 0) // We have a new head definition
-            // TODO: add similar functionality for definestartstop
             {
-                // TODO: figure out rank of new head base on defining head level
                 string new_head_definition = "";
 
                 while (*iter != '[')
@@ -691,6 +694,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (!point.in_comment && (iter.strcmp("\\bTABLE") == 0 || iter.strcmp("\\bTR") == 0))
             {
+                // Special case for folds in natural tables
                 vector<UniChar> curr_name;    // Name of current command
                 vector<UniChar> curr_type;    // Type of current command
                 fold_info curr_fold;          //
@@ -708,6 +712,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
             }
             if (!point.in_comment && (iter.strcmp("\\eTABLE") == 0 || iter.strcmp("\\eTR") == 0))
             {
+                // Special case for folds in natural tables
                 OSErr err;                    // Return check
                 vector<UniChar> curr_name;    // Name of current command
                 vector<UniChar> curr_type;    // Type of current command
@@ -737,6 +742,10 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                     }
                 }
             }
+            //
+            //
+            #pragma mark Start/Stop pairs
+            //
             if (iter.strcmp("\\start") == 0) // Check if we have a start command.
             {
                 // We want to populate the info block as we go:
