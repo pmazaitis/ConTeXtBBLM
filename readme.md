@@ -1,7 +1,9 @@
 
 BBEdit Language Module for ConTeXt Authoring
 
-Intended for BBEdit v11, for use with ConTeXt MkIV.
+Intended for BBEdit v12, for use with ConTeXt MkIV.
+
+(Older versions of BBedit can use an earlier releases of the plugin.) 
 
 Created by Paul Mazaitis.
 
