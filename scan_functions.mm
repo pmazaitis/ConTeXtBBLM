@@ -192,58 +192,58 @@ static bool inParamBlock(BBLMTextIterator* iter, func_point_info* p, int param_c
     return true;
 }
 
-static int getTypeRank(string str_type)
-{
-    NSString *curr_type = [NSString stringWithUTF8String:str_type.c_str()];
-    
-    NSDictionary * type_ranks = [[NSDictionary alloc] initWithObjectsAndKeys:
-                                 [NSNumber numberWithInt:1], @"project",
-                                 [NSNumber numberWithInt:2], @"product",
-                                 [NSNumber numberWithInt:2], @"component",
-                                 [NSNumber numberWithInt:2], @"text",
-                                 [NSNumber numberWithInt:3], @"part",
-                                 [NSNumber numberWithInt:3], @"frontmatter",
-                                 [NSNumber numberWithInt:3], @"bodymatter",
-                                 [NSNumber numberWithInt:3], @"backmatter",
-                                 [NSNumber numberWithInt:3], @"appendices",
-                                 [NSNumber numberWithInt:4], @"chapter",
-                                 [NSNumber numberWithInt:4], @"title",
-                                 [NSNumber numberWithInt:5], @"section",
-                                 [NSNumber numberWithInt:5], @"subject",
-                                 [NSNumber numberWithInt:6], @"subsection",
-                                 [NSNumber numberWithInt:6], @"subsubject",
-                                 [NSNumber numberWithInt:7], @"subsubsection",
-                                 [NSNumber numberWithInt:7], @"subsubsubject",
-                                 [NSNumber numberWithInt:8], @"subsubsubsection",
-                                 [NSNumber numberWithInt:8], @"subsubsubsubject",
-                                 [NSNumber numberWithInt:9], @"subsubsubsubsection",
-                                 [NSNumber numberWithInt:9], @"subsubsubsubsubject",
-                                 nil];
-
-    // And set special ranking values for heirarchy in the TABLE environment
-    if (str_type == "TABLE")
-    {
-        return MAX_RANK - 2;
-    }
-    
-    if (str_type == "TR")
-    {
-        return MAX_RANK - 1;
-    }
-    
-    if([[type_ranks allKeys] containsObject:curr_type])
-    {
-        int curr_rank = [[type_ranks objectForKey:curr_type] intValue];
-        [type_ranks release];
-        return curr_rank;
-    }
-    else
-    {
-        [type_ranks release];
-        return MAX_RANK;
-    }
-
-}
+//static int getTypeRank(string str_type)
+//{
+//    NSString *curr_type = [NSString stringWithUTF8String:str_type.c_str()];
+//
+//    NSDictionary * type_ranks = [[NSDictionary alloc] initWithObjectsAndKeys:
+//                                 [NSNumber numberWithInt:1], @"project",
+//                                 [NSNumber numberWithInt:2], @"product",
+//                                 [NSNumber numberWithInt:2], @"component",
+//                                 [NSNumber numberWithInt:2], @"text",
+//                                 [NSNumber numberWithInt:3], @"part",
+//                                 [NSNumber numberWithInt:3], @"frontmatter",
+//                                 [NSNumber numberWithInt:3], @"bodymatter",
+//                                 [NSNumber numberWithInt:3], @"backmatter",
+//                                 [NSNumber numberWithInt:3], @"appendices",
+//                                 [NSNumber numberWithInt:4], @"chapter",
+//                                 [NSNumber numberWithInt:4], @"title",
+//                                 [NSNumber numberWithInt:5], @"section",
+//                                 [NSNumber numberWithInt:5], @"subject",
+//                                 [NSNumber numberWithInt:6], @"subsection",
+//                                 [NSNumber numberWithInt:6], @"subsubject",
+//                                 [NSNumber numberWithInt:7], @"subsubsection",
+//                                 [NSNumber numberWithInt:7], @"subsubsubject",
+//                                 [NSNumber numberWithInt:8], @"subsubsubsection",
+//                                 [NSNumber numberWithInt:8], @"subsubsubsubject",
+//                                 [NSNumber numberWithInt:9], @"subsubsubsubsection",
+//                                 [NSNumber numberWithInt:9], @"subsubsubsubsubject",
+//                                 nil];
+//
+//    // And set special ranking values for heirarchy in the TABLE environment
+//    if (str_type == "TABLE")
+//    {
+//        return MAX_RANK - 2;
+//    }
+//
+//    if (str_type == "TR")
+//    {
+//        return MAX_RANK - 1;
+//    }
+//
+//    if([[type_ranks allKeys] containsObject:curr_type])
+//    {
+//        int curr_rank = [[type_ranks objectForKey:curr_type] intValue];
+//        [type_ranks release];
+//        return curr_rank;
+//    }
+//    else
+//    {
+//        [type_ranks release];
+//        return MAX_RANK;
+//    }
+//
+//}
 
 OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_callbacks)
 {    
@@ -290,7 +290,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     BBLMTextIterator iter(params);  // Iterator as supplied by calling code
     OSErr  result = noErr;          // Return check
     bool beyond_eof;                // Flag for getting out of nested parsers
-    bool unbalanced_fold;            // Flag for short-circuiting folding
+    // bool unbalanced_fold;            // Flag for short-circuiting folding
     
     func_point_info point;
     point.ch = ' ';                 // The current character we're processing
@@ -357,7 +357,9 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
     
     while(true) // We test for our out of bounds conditions when skipping characters
     {
-        // Test for Callouts in Comments
+        //
+        #pragma mark Test for Callouts in Comments
+        //
         if (point.in_comment)
         {
             {
@@ -825,7 +827,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 curr_fold.type = cmd_type;
                 curr_fold.start = point.pos;
                 curr_fold.line_number = point.line_number;
-                curr_fold.rank = getTypeRank(cmd_type);
+                // curr_fold.rank = getTypeRank(cmd_type);
                 
                 if (cmd_name == "\\starttext" && point.line_number > 4 && show_fold)
                 {
@@ -969,7 +971,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                 {
                     // We're not in a comment, and we have a previous fold to look at
                     fold_info prev_fold;
-                    int curr_rank;
+//                    int curr_rank;
                     vector<UniChar> last_type_seen;
                     do
                     {
@@ -982,7 +984,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                         if (!pend_folds.empty())
                         {
                             prev_fold = pend_folds.top();
-                            curr_rank = getTypeRank(cmd_type);
+//                            curr_rank = getTypeRank(cmd_type);
                         }
                         else
                         {
@@ -1008,7 +1010,7 @@ OSErr scanForFunctions(BBLMParamBlock &params, const BBLMCallbackBlock &bblm_cal
                         {
                             last_type_seen = curr_type;
                         }
-                    } while (!pend_folds.empty() && curr_rank < prev_fold.rank );
+                    } while (!pend_folds.empty()); // && curr_rank < prev_fold.rank );
                 } // End fold handling
                 
                 // handle /stoptext fold
